@@ -20,27 +20,38 @@ jobs:
           check: "ci/hydra-build:required"
       - name: Download Artifacts from Hydra
         run: |
+          set -euo pipefail
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-linux   && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-windows && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-darwin  && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.aarch64-darwin && cp result/testgen-hs-*.* .
+      - name: Read Version
+        run: |
+          set -euo pipefail
+          version=$(nix eval --json .#packages.x86_64-linux.default.version | jq -r .)
+          echo "Version is $version"
+          echo "version=$version" >> $GITHUB_ENV
       - name: Upload Artifact (aarch64-darwin)
         uses: actions/upload-artifact@v4
         with:
-          name: testgen-hs-aarch64-darwin.tar.bz2
-          path: testgen-hs-aarch64-darwin.tar.bz2
+          name: testgen-hs-${{ env.version }}-aarch64-darwin.tar.bz2
+          path: testgen-hs-${{ env.version }}-aarch64-darwin.tar.bz2
+          if-no-files-found: error
       - name: Upload Artifact (x86_64-darwin)
         uses: actions/upload-artifact@v4
         with:
-          name: testgen-hs-x86_64-darwin.tar.bz2
-          path: testgen-hs-x86_64-darwin.tar.bz2
+          name: testgen-hs-${{ env.version }}-x86_64-darwin.tar.bz2
+          path: testgen-hs-${{ env.version }}-x86_64-darwin.tar.bz2
+          if-no-files-found: error
       - name: Upload Artifact (x86_64-linux)
         uses: actions/upload-artifact@v4
         with:
-          name: testgen-hs-x86_64-linux.tar.bz2
-          path: testgen-hs-x86_64-linux.tar.bz2
+          name: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
+          path: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
+          if-no-files-found: error
       - name: Upload Artifact (x86_64-windows)
         uses: actions/upload-artifact@v4
         with:
-          name: testgen-hs-x86_64-windows.zip
-          path: testgen-hs-x86_64-windows.zip
+          name: testgen-hs-${{ env.version }}-x86_64-windows.zip
+          path: testgen-hs-${{ env.version }}-x86_64-windows.zip
+          if-no-files-found: error

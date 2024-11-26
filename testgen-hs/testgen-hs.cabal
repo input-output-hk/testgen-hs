@@ -1,8 +1,11 @@
 cabal-version: 3.0
 name:          testgen-hs
-version:       0.1.0.0
 build-type:    Simple
-synopsis:      Test case generator for cross-checking CBOR (de)serializers
+synopsis:
+  CBOR test case generator and deserializer for cross-checking other implementations
+
+-- Version tracks cardano-node, adding a patch segment:
+version:       10.1.2.0
 
 executable testgen-hs
   main-is:            Main.hs
@@ -37,6 +40,7 @@ executable testgen-hs
     CLI
     Deserialize
     Generators
+    Paths_testgen_hs
 
   default-extensions:
     DeriveAnyClass

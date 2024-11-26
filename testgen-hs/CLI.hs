@@ -12,7 +12,9 @@ where
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.Version as V
 import Options.Applicative as O
+import qualified Paths_testgen_hs as V
 
 data Command = Generate GenerateOptions | Deserialize ByteString deriving (Show)
 
@@ -45,9 +47,13 @@ parse = execParser opts
 opts :: ParserInfo Command
 opts =
   info
-    (commandParser <**> helper)
+    (commandParser <**> helperWithVersion)
     ( fullDesc
-        <> progDesc "Test case generator for cross-checking CBOR (de)serializers"
+        <> progDesc
+          ( "testgen-hs "
+              <> V.showVersion V.version
+              <> " - CBOR test case generator and deserializer for cross-checking other implementations"
+          )
     )
 
 commandParser :: Parser Command
@@ -147,3 +153,14 @@ parseHex :: String -> Either String ByteString
 parseHex hexInput =
   let bsInput = BS8.pack hexInput
    in Base16.decode bsInput
+
+helperWithVersion :: Parser (a -> a)
+helperWithVersion = helper <* versionOption
+  where
+    versionOption =
+      infoOption
+        ("testgen-hs " ++ V.showVersion V.version)
+        ( long "version"
+            <> short 'v'
+            <> help "Show the version information"
+        )

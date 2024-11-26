@@ -98,7 +98,7 @@ in rec {
         + ''
           mkdir testgen-hs
           mv $out/* testgen-hs/
-          target=$out/testgen-hs-${targetSystem}.tar.bz2
+          target=$out/testgen-hs-${defaultPackage.version}-${targetSystem}.tar.bz2
           tar --dereference -cjf "$target" testgen-hs
           ${downloadableFromHydra}
         '';
@@ -111,11 +111,11 @@ in rec {
         ${
           if useZip
           then ''
-            target=$out/testgen-hs-${targetSystem}.zip
+            target=$out/testgen-hs-${defaultPackage.version}-${targetSystem}.zip
             ${lib.getExe pkgs.zip} -q -r "$target" testgen-hs
           ''
           else ''
-            target=$out/testgen-hs-${targetSystem}.tar.bz2
+            target=$out/testgen-hs-${defaultPackage.version}-${targetSystem}.tar.bz2
             tar --dereference -cjf "$target" testgen-hs
           ''
         }
