@@ -12,7 +12,6 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
   inherit (pkgs) lib;
 in rec {
   defaultPackage = testgen-hs;
-  hydraPackage = testgen-hs;
 
   cardano-node-flake = let
     unpatched = inputs.cardano-node;
@@ -68,6 +67,56 @@ in rec {
       x86_64-darwin = patched-flake.packages.x86_64-darwin.testgen-hs;
       aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
       x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
+    }
+    .${targetSystem};
+
+  nix-bundle-exe = import inputs.nix-bundle-exe {inherit pkgs;};
+
+  nix-bundle-exe--same-dir = let
+    patched = pkgs.runCommand "nix-bundle-exe-same-dir" {} ''
+      cp -R ${inputs.nix-bundle-exe} $out
+      chmod -R +w $out
+      sed -r 's+@executable_path/\$relative_bin_to_lib/\$lib_dir+@executable_path+g' -i $out/bundle-macos.sh
+    '';
+  in
+    import patched {
+      inherit pkgs;
+      bin_dir = ".";
+      exe_dir = "_unused_";
+      lib_dir = ".";
+    };
+
+  hydraPackage = let
+    downloadableFromHydra = ''
+      # Make it downloadable from Hydra:
+      mkdir -p $out/nix-support
+      echo "file binary-dist \"$target\"" >$out/nix-support/hydra-build-products
+    '';
+    darwinLike = (nix-bundle-exe--same-dir defaultPackage).overrideAttrs (drv: {
+      buildCommand =
+        drv.buildCommand
+        + ''
+          mkdir testgen-hs
+          mv $out/* testgen-hs/
+          target=$out/testgen-hs-${targetSystem}.tar.bz2
+          tar --dereference -cjf "$target" testgen-hs
+          ${downloadableFromHydra}
+        '';
+    });
+    linuxLike = pkgs.runCommandNoCC "bundle" {} ''
+      mkdir -p $out
+      mkdir -p testgen-hs
+      cp -R ${defaultPackage}/bin/. testgen-hs/
+      target=$out/testgen-hs-${targetSystem}.tar.bz2
+      tar --dereference -cjf "$target" testgen-hs
+      ${downloadableFromHydra}
+    '';
+  in
+    {
+      aarch64-darwin = darwinLike;
+      x86_64-darwin = darwinLike;
+      x86_64-linux = linuxLike;
+      x86_64-windows = linuxLike;
     }
     .${targetSystem};
 }

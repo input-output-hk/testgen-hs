@@ -8,6 +8,8 @@
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.1.2";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
+    nix-bundle-exe.url = "github:3noch/nix-bundle-exe";
+    nix-bundle-exe.flake = false;
   };
 
   outputs = inputs: let

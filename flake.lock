@@ -51,6 +51,22 @@
         "type": "github"
       }
     },
+    "nix-bundle-exe": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1727401894,
+        "narHash": "sha256-NKdglYdwN4M7/UOZ8Ml3fuJT1MYXAb6aU4ccU920BjM=",
+        "owner": "3noch",
+        "repo": "nix-bundle-exe",
+        "rev": "7f61fe91a73119e1e39d821f0d215d6186d01363",
+        "type": "github"
+      },
+      "original": {
+        "owner": "3noch",
+        "repo": "nix-bundle-exe",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1731890469,
@@ -84,6 +100,7 @@
         "cardano-node": "cardano-node",
         "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",
+        "nix-bundle-exe": "nix-bundle-exe",
         "nixpkgs": "nixpkgs",
         "treefmt-nix": "treefmt-nix"
       }
