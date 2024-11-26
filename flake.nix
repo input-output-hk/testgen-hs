@@ -51,6 +51,7 @@
           programs.ormolu.enable = true; # Haskell
           programs.cabal-fmt.enable = true;
           programs.shfmt.enable = true;
+          programs.yamlfmt.enable = true;
         };
       };
 
