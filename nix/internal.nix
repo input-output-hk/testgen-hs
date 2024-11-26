@@ -103,20 +103,30 @@ in rec {
           ${downloadableFromHydra}
         '';
     });
-    linuxLike = pkgs.runCommandNoCC "bundle" {} ''
-      mkdir -p $out
-      mkdir -p testgen-hs
-      cp -R ${defaultPackage}/bin/. testgen-hs/
-      target=$out/testgen-hs-${targetSystem}.tar.bz2
-      tar --dereference -cjf "$target" testgen-hs
-      ${downloadableFromHydra}
-    '';
+    linuxLike = {useZip ? false}:
+      pkgs.runCommandNoCC "bundle" {} ''
+        mkdir -p $out
+        mkdir -p testgen-hs
+        cp -R ${defaultPackage}/bin/. testgen-hs/
+        ${
+          if useZip
+          then ''
+            target=$out/testgen-hs-${targetSystem}.zip
+            ${lib.getExe pkgs.zip} -q -r "$target" testgen-hs
+          ''
+          else ''
+            target=$out/testgen-hs-${targetSystem}.tar.bz2
+            tar --dereference -cjf "$target" testgen-hs
+          ''
+        }
+        ${downloadableFromHydra}
+      '';
   in
     {
       aarch64-darwin = darwinLike;
       x86_64-darwin = darwinLike;
-      x86_64-linux = linuxLike;
-      x86_64-windows = linuxLike;
+      x86_64-linux = linuxLike {};
+      x86_64-windows = linuxLike {useZip = true;};
     }
     .${targetSystem};
 }
