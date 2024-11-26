@@ -10,17 +10,19 @@
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
   };
 
-  outputs = inputs:
+  outputs = inputs: let
+    inherit (inputs.nixpkgs) lib;
+  in
     inputs.flake-parts.lib.mkFlake {inherit inputs;} ({config, ...}: {
       imports = [
         inputs.treefmt-nix.flakeModule
       ];
 
       flake.internal =
-        inputs.nixpkgs.lib.genAttrs config.systems (
+        lib.genAttrs config.systems (
           targetSystem: import ./nix/internal.nix {inherit inputs targetSystem;}
         )
-        // inputs.nixpkgs.lib.genAttrs ["x86_64-windows"] (
+        // lib.genAttrs ["x86_64-windows"] (
           targetSystem: import ./nix/internal.nix {inherit inputs targetSystem;}
         );
 
@@ -37,7 +39,7 @@
           {
             default = internal.defaultPackage;
           }
-          // (inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          // (lib.optionalAttrs (system == "x86_64-linux") {
             default-x86_64-windows = inputs.self.internal.x86_64-windows.defaultPackage;
           });
 
@@ -47,6 +49,18 @@
           programs.ormolu.enable = true; # Haskell
           programs.cabal-fmt.enable = true;
           programs.shfmt.enable = true;
+        };
+      };
+
+      flake.hydraJobs = {
+        testgen-hs = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+          targetSystem: inputs.self.internal.${targetSystem}.hydraPackage
+        );
+        required = inputs.nixpkgs.legacyPackages.x86_64-linux.releaseTools.aggregate {
+          name = "github-required";
+          meta.description = "All jobs required to pass CI";
+          constituents =
+            lib.collect lib.isDerivation inputs.self.hydraJobs.testgen-hs;
         };
       };
     });

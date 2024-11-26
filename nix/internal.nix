@@ -12,6 +12,7 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
   inherit (pkgs) lib;
 in rec {
   defaultPackage = testgen-hs;
+  hydraPackage = testgen-hs;
 
   cardano-node-flake = let
     unpatched = inputs.cardano-node;
