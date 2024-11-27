@@ -13,24 +13,7 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
 in rec {
   defaultPackage = testgen-hs;
 
-  cardano-node-flake = let
-    unpatched = inputs.cardano-node;
-  in
-    (import inputs.flake-compat {
-      src =
-        if targetSystem != "aarch64-darwin"
-        then unpatched
-        else {
-          outPath = toString (pkgs.runCommand "source" {} ''
-            cp -r ${unpatched} $out
-            chmod -R +w $out
-            cd $out
-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
-          '');
-          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-        };
-    })
-    .defaultNix;
+  cardano-node-flake = (import inputs.flake-compat {src = inputs.cardano-node;}).defaultNix;
 
   cardano-node-packages =
     {

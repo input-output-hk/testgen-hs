@@ -16,7 +16,7 @@ import qualified Data.Version as V
 import Options.Applicative as O
 import qualified Paths_testgen_hs as V
 
-data Command = Generate GenerateOptions | Deserialize ByteString deriving (Show)
+data Command = Generate GenerateOptions | Deserialize ByteString | DeserializeStream deriving (Show)
 
 data GenerateOptions = GenerateOptions (Maybe Seed) GenSize NumCases TypeCommand deriving (Show)
 
@@ -78,6 +78,15 @@ commandParser =
                          <**> helper
                    )
                    (progDesc "Deserialize CBOR of ‘HardForkApplyTxErr’ that you got from cardano-node")
+               )
+           )
+        <> ( command
+               "deserialize-stream"
+               ( info
+                   ( pure DeserializeStream
+                       <**> helper
+                   )
+                   (progDesc "Deserialize an STDIN stream of multiple lines of base16-encoded CBOR of ‘HardForkApplyTxErr’")
                )
            )
     )

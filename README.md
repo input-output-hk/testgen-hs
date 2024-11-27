@@ -1,6 +1,6 @@
 # testgen-hs
 
-Test case generator for cross-checking CBOR (de)serializers.
+CBOR test case generator and deserializer for cross-checking other implementations.
 
 ## Example 1 – how to use it
 
@@ -260,4 +260,17 @@ And then easily reproduce it by providing the same seed that was found:
   },
   "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
 }
+```
+
+## Example 5 – deserialize a stream of CBORs
+
+```
+❯ ( echo 8182068182028200a0
+    echo 81820681820481581cc0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456 
+  ) | testgen-hs deserialize-stream
+```
+
+``` json
+{"cbor":"8182068182028200a0","haskellRepr":"ApplyTxError (ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList [])) :| [])","json":{"contents":{"contents":{"contents":{"era":"ShelleyBasedEraConway","error":["ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"],"kind":"ShelleyTxValidationError"},"tag":"TxValidationErrorInCardanoMode"},"tag":"TxCmdTxSubmitValidationError"},"tag":"TxSubmitFail"},"typeTag":"ApplyTxError (ConwayEra StandardCrypto)"}
+{"cbor":"81820681820481581cc0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456","haskellRepr":"ApplyTxError (ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"c0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456\"} :| []) :| [])","json":{"contents":{"contents":{"contents":{"era":"ShelleyBasedEraConway","error":["ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"c0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456\"} :| [])"],"kind":"ShelleyTxValidationError"},"tag":"TxValidationErrorInCardanoMode"},"tag":"TxCmdTxSubmitValidationError"},"tag":"TxSubmitFail"},"typeTag":"ApplyTxError (ConwayEra StandardCrypto)"}
 ```

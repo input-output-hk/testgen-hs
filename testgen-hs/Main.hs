@@ -8,8 +8,9 @@ import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Base16 as B16
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -21,6 +22,7 @@ import GHC.Generics (Generic)
 import qualified Generators as G
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
+import qualified System.IO as SIO
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
 import qualified Test.QuickCheck.Gen as QC (unGen)
@@ -32,6 +34,7 @@ main =
   CLI.parse >>= \case
     CLI.Generate opts -> runGenerate opts
     CLI.Deserialize cbor -> runDeserialize cbor
+    CLI.DeserializeStream -> runDeserializeStream
 
 data Output a = Output
   { seed :: Int,
@@ -75,7 +78,7 @@ writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
       values :: [a] = QC.unGen (QC.vectorOf numCases QC.arbitrary) qcGen generatorSize
       testCases :: [TestCase a] = mkTestCase <$> values
       output = Output {seed, testCases}
-  B.putStrLn $ J.encodePretty' (J.defConfig {J.confIndent = J.Spaces 2}) output
+  BL8.putStrLn $ J.encodePretty' (J.defConfig {J.confIndent = J.Spaces 2}) output
 
 mkTestCase :: forall a. (Show a, G.OurCBOR a) => a -> TestCase a
 mkTestCase a =
@@ -94,21 +97,48 @@ mkTestCase a =
 
 runDeserialize :: ByteString -> IO ()
 runDeserialize cbor' =
-  case D.deserialize cbor' of
+  case cborToTestCase cbor' of
     Left err -> do
       hPutStrLn stderr err
       exitFailure
     Right a ->
+      BL8.putStrLn $
+        J.encodePretty'
+          (J.defConfig {J.confIndent = J.Spaces 2})
+          a
+
+cborToTestCase :: ByteString -> Either String (TestCase a)
+cborToTestCase cbor' =
+  wrap <$> D.deserialize cbor'
+  where
+    wrap a =
       let (typeTag', haskellRepr') = G.hfcEnvelopeShowInner a
-       in B.putStrLn $
-            J.encodePretty'
-              (J.defConfig {J.confIndent = J.Spaces 2})
-              TestCase
-                { cbor =
-                    T.decodeUtf8With T.lenientDecode
-                      . B16.encode
-                      $ cbor',
-                  haskellRepr = T.pack haskellRepr',
-                  json = G.hfcEnvelopeToSubmitApiEnvelope a,
-                  typeTag = T.pack typeTag'
-                }
+       in TestCase
+            { cbor =
+                T.decodeUtf8With T.lenientDecode
+                  . B16.encode
+                  $ cbor',
+              haskellRepr = T.pack haskellRepr',
+              json = G.hfcEnvelopeToSubmitApiEnvelope a,
+              typeTag = T.pack typeTag'
+            }
+
+runDeserializeStream :: IO ()
+runDeserializeStream = do
+  -- We need line buffering for this to work:
+  SIO.hSetBuffering SIO.stdin SIO.LineBuffering
+  SIO.hSetBuffering SIO.stdout SIO.LineBuffering
+  processLines
+  where
+    processLines :: IO ()
+    processLines = do
+      eof <- SIO.isEOF
+      if eof
+        then pure ()
+        else do
+          line <- B8.getLine
+          let result = case B16.decode line >>= cborToTestCase of
+                Right a -> J.toJSON a
+                Left err -> J.object ["error" J..= err]
+          BL8.putStrLn . J.encode $ result
+          processLines
