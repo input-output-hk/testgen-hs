@@ -39,6 +39,9 @@ in rec {
             cp -r ${../testgen-hs} ./testgen-hs
             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
             sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
+
+            patch -p1 -i ${./cardano-node--apply-patches.diff}
+            cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
           '');
           inherit (unpatched) rev shortRev lastModified lastModifiedDate;
         };
