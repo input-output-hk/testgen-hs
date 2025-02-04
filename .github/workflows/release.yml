@@ -1,0 +1,53 @@
+name: Release
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+permissions:
+  id-token: write
+  contents: write
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-tag runs
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: |
+          echo >&2 'fatal: this workflow must be run from a Git tag reference, not ‘${{ github.ref }}’'
+          exit 1
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            substituters = https://cache.nixos.org https://cache.iog.io
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+      - name: Download release artifacts from Hydra
+        run: |
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-linux \
+            .#hydraJobs.testgen-hs.x86_64-linux
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-windows \
+            .#hydraJobs.testgen-hs.x86_64-windows
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-aarch64-darwin \
+            .#hydraJobs.testgen-hs.aarch64-darwin
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-darwin \
+            .#hydraJobs.testgen-hs.x86_64-darwin
+
+          find -L result-*
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            result-archive-x86_64-linux/*.tar.bz2
+            result-archive-x86_64-darwin/*.tar.bz2
+            result-archive-aarch64-darwin/*.tar.bz2
+            result-archive-x86_64-windows/*.zip
