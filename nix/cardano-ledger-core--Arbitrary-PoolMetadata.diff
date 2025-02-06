@@ -1,21 +1,13 @@
 diff --git a/testlib/Test/Cardano/Ledger/Core/Arbitrary.hs b/testlib/Test/Cardano/Ledger/Core/Arbitrary.hs
-index a0e9c8359..56015f2a2 100644
+index 0da03786f..0aad0f7c8 100644
 --- a/testlib/Test/Cardano/Ledger/Core/Arbitrary.hs
 +++ b/testlib/Test/Cardano/Ledger/Core/Arbitrary.hs
-@@ -142,6 +142,7 @@ import Cardano.Ledger.UTxO (UTxO (..))
- import Control.Monad (replicateM)
- import Control.Monad.Identity (Identity)
- import Control.Monad.Trans.Fail.String (errorFail)
-+import qualified Data.ByteString
- import Data.GenValidity
- import Data.Int (Int64)
- import Data.Map.Strict (Map)
-@@ -497,7 +498,7 @@ instance Crypto c => Arbitrary (PoolParams c) where
+@@ -482,7 +482,7 @@ instance Arbitrary PoolParams where
        <*> arbitrary
  
  instance Arbitrary PoolMetadata where
 -  arbitrary = PoolMetadata <$> arbitrary <*> arbitrary
-+  arbitrary = PoolMetadata <$> arbitrary <*> (Data.ByteString.pack <$> vectorOf 32 (choose (0, 255)))
++  arbitrary = PoolMetadata <$> arbitrary <*> genByteString 32
  
  instance Arbitrary StakePoolRelay where
    arbitrary = genericArbitraryU
