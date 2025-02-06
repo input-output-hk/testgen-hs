@@ -23,11 +23,12 @@ import qualified Generators as G
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 import qualified System.IO as SIO
+import qualified System.Random
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
-import qualified Test.QuickCheck.Gen as QC (unGen)
+import qualified Test.QuickCheck.Gen as QC
 import Test.QuickCheck.Instances.Text ()
-import qualified Test.QuickCheck.Random as QC (mkQCGen)
+import qualified Test.QuickCheck.Random as QC
 
 main :: IO ()
 main =
@@ -35,12 +36,6 @@ main =
     CLI.Generate opts -> runGenerate opts
     CLI.Deserialize cbor -> runDeserialize cbor
     CLI.DeserializeStream -> runDeserializeStream
-
-data Output a = Output
-  { seed :: Int,
-    testCases :: [TestCase a]
-  }
-  deriving (Generic, Show, FromJSON, ToJSON)
 
 data TestCase a = TestCase
   { cbor :: Text,
@@ -52,9 +47,13 @@ data TestCase a = TestCase
 
 runGenerate :: CLI.GenerateOptions -> IO ()
 runGenerate (CLI.GenerateOptions maybeSeed genSize numCases command) = do
+  SIO.hSetBuffering SIO.stdout SIO.LineBuffering
+
   seed <- case maybeSeed of
     Just s -> return s
     Nothing -> Seed . round . (* 1000.0) <$> getPOSIXTime
+
+  BL8.putStrLn $ J.encode (J.object [("seed", (\(Seed s) -> J.toJSON s) seed)])
 
   ( case command of
       CLI.ApplyTxErr'Byron -> writeRandom @G.ApplyTxErr'Byron Proxy
@@ -74,11 +73,22 @@ runGenerate (CLI.GenerateOptions maybeSeed genSize numCases command) = do
 
 writeRandom :: forall a. (Arbitrary a, Show a, G.OurCBOR a) => Proxy a -> Seed -> GenSize -> NumCases -> IO ()
 writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
-  let qcGen = QC.mkQCGen seed
-      values :: [a] = QC.unGen (QC.vectorOf numCases QC.arbitrary) qcGen generatorSize
-      testCases :: [TestCase a] = mkTestCase <$> values
-      output = Output {seed, testCases}
-  BL8.putStrLn $ J.encodePretty' (J.defConfig {J.confIndent = J.Spaces 2}) output
+  loop numCases (QC.mkQCGen seed)
+  where
+    loop :: Int -> QC.QCGen -> IO ()
+    loop 0 _ = pure ()
+    loop n rng1 = do
+      let (value :: a, rng2) = splittingUnGen QC.arbitrary rng1 generatorSize
+          testCase :: TestCase a = mkTestCase value
+      BL8.putStrLn $ J.encode testCase
+      loop (n - 1) rng2
+
+-- | For streaming, we need a version of `unGen` that returns the next RNG –
+--  purely and deterministically.
+splittingUnGen :: QC.Gen a -> QC.QCGen -> Int -> (a, QC.QCGen)
+splittingUnGen (QC.MkGen unGen) rng size =
+  let (rng1, rng2) = System.Random.split rng
+   in (unGen rng1 size, rng2)
 
 mkTestCase :: forall a. (Show a, G.OurCBOR a) => a -> TestCase a
 mkTestCase a =
