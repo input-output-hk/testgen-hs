@@ -12,6 +12,7 @@ executable testgen-hs
   build-depends:
     , aeson
     , aeson-pretty
+    , async
     , base                                                  >=4.7 && <5
     , base16-bytestring
     , bytestring
@@ -60,6 +61,7 @@ executable testgen-hs
   ghc-options:
     -O2 -Werror -Wall -Wcompat -Widentities -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
-    -Wunused-packages
+    -Wunused-packages -threaded -rtsopts -O2 -Werror
+    "-with-rtsopts=-A16m -T -N"
 
   default-language:   Haskell2010

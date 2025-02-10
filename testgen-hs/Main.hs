@@ -3,6 +3,8 @@ module Main where
 import CLI (GenSize (..), NumCases (..), Seed (..))
 import qualified CLI
 import qualified Codec.CBOR.Write as C
+import qualified Control.Concurrent.Async as Async
+import Control.Concurrent.MVar (modifyMVar_, newMVar)
 import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
@@ -11,6 +13,7 @@ import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import Data.Foldable (foldl')
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -71,17 +74,37 @@ runGenerate (CLI.GenerateOptions maybeSeed genSize numCases command) = do
     genSize
     numCases
 
+-- | We have to do this in multiple threads, otherwise this generator code is a
+--  bottleneck for Rust tests. We still want to deterministically get the same
+--  set of test cases for the same seed, but keeping the order is irrelevant,
+--  which lets us do less of the costly sync.
 writeRandom :: forall a. (Arbitrary a, Show a, G.OurCBOR a) => Proxy a -> Seed -> GenSize -> NumCases -> IO ()
 writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
-  loop numCases (QC.mkQCGen seed)
+  let numGreenThreads = 64 -- changing this, changes determinism – how the seed influences the cases
+  putsLock <- newMVar ()
+  let chunks =
+        snd $
+          foldl'
+            ( \(prevRng, acc) chunk ->
+                let (rngL, rngR) = System.Random.split prevRng
+                 in (rngL, (chunk, rngR) : acc)
+            )
+            (QC.mkQCGen seed, [])
+            (fairChunks numCases numGreenThreads)
+  let worker :: Int -> QC.QCGen -> IO ()
+      worker 0 _ = pure ()
+      worker n rng1 = do
+        let (value :: a, rng2) = splittingUnGen QC.arbitrary rng1 generatorSize
+            testCase :: TestCase a = mkTestCase value
+        modifyMVar_ putsLock . const . BL8.putStrLn $ J.encode testCase
+        worker (n - 1) rng2
+  Async.mapConcurrently_ (uncurry worker) chunks
+
+-- | Split `total` into `n` fair chunks, e.g. `chunks 20 3 == [7,7,6]`.
+fairChunks :: Int -> Int -> [Int]
+fairChunks total n = replicate remainder (base + 1) ++ replicate (n - remainder) base
   where
-    loop :: Int -> QC.QCGen -> IO ()
-    loop 0 _ = pure ()
-    loop n rng1 = do
-      let (value :: a, rng2) = splittingUnGen QC.arbitrary rng1 generatorSize
-          testCase :: TestCase a = mkTestCase value
-      BL8.putStrLn $ J.encode testCase
-      loop (n - 1) rng2
+    (base, remainder) = total `divMod` n
 
 -- | For streaming, we need a version of `unGen` that returns the next RNG –
 --  purely and deterministically.
