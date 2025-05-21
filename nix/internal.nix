@@ -42,6 +42,7 @@ in rec {
 
             patch -p1 -i ${./cardano-node--apply-patches.diff}
             cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
+            cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
           '');
           inherit (unpatched) rev shortRev lastModified lastModifiedDate;
         };

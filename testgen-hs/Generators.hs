@@ -2,11 +2,11 @@
 
 module Generators where
 
-import qualified Cardano.Api.Eon.ShelleyBasedEra as CAPI
-import qualified Cardano.Api.Eras.Core as CAPI
-import qualified Cardano.Api.InMode as CAPI
-import qualified Cardano.Api.Modes as CAPI
-import Cardano.Api.Orphans ()
+import qualified Cardano.Api.Internal.Eon.ShelleyBasedEra as CAPI
+import qualified Cardano.Api.Internal.Eras.Core as CAPI
+import qualified Cardano.Api.Internal.InMode as CAPI
+import qualified Cardano.Api.Internal.Modes as CAPI
+import Cardano.Api.Internal.Orphans ()
 import qualified Cardano.Chain.Slotting as CCS
 import qualified Cardano.TxSubmit.Types as CTT
 import qualified Codec.CBOR.Encoding as C

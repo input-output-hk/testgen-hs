@@ -1,0 +1,35 @@
+diff --git a/cardano-api.cabal b/cardano-api.cabal
+index 1e76d5160..3a2944853 100644
+--- a/cardano-api.cabal
++++ b/cardano-api.cabal
+@@ -76,12 +76,14 @@ library
+     Cardano.Api.Internal.DRepMetadata
+     Cardano.Api.Internal.Eon.ShelleyBasedEra
+     Cardano.Api.Internal.Eras
++    Cardano.Api.Internal.Eras.Core
+     Cardano.Api.Internal.Error
+     Cardano.Api.Internal.Fees
+     Cardano.Api.Internal.Genesis
+     Cardano.Api.Internal.GenesisParameters
+     Cardano.Api.Internal.Governance.Metadata.Validation
+     Cardano.Api.Internal.IO
++    Cardano.Api.Internal.InMode
+     Cardano.Api.Internal.LedgerState
+     Cardano.Api.Internal.Modes
+     Cardano.Api.Internal.Orphans
+@@ -203,7 +205,6 @@ library
+     Cardano.Api.Internal.Eon.ShelleyToBabbageEra
+     Cardano.Api.Internal.Eon.ShelleyToMaryEra
+     Cardano.Api.Internal.Eras.Case
+-    Cardano.Api.Internal.Eras.Core
+     Cardano.Api.Internal.Experimental.Eras
+     Cardano.Api.Internal.Experimental.Plutus.IndexedPlutusScriptWitness
+     Cardano.Api.Internal.Experimental.Plutus.Script
+@@ -229,7 +230,6 @@ library
+     Cardano.Api.Internal.IPC
+     Cardano.Api.Internal.IPC.Monad
+     Cardano.Api.Internal.IPC.Version
+-    Cardano.Api.Internal.InMode
+     Cardano.Api.Internal.Json
+     Cardano.Api.Internal.Keys.Byron
+     Cardano.Api.Internal.Keys.Class

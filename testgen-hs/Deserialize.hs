@@ -2,7 +2,7 @@
 
 module Deserialize (deserialize) where
 
-import Cardano.Api.Orphans ()
+import Cardano.Api.Internal.Orphans ()
 import qualified Cardano.Chain.Slotting as CCS
 import qualified Codec.CBOR.Decoding as C
 import qualified Codec.CBOR.Read as C
