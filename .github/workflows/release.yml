@@ -31,6 +31,10 @@ jobs:
             .#hydraJobs.testgen-hs.x86_64-linux
 
           nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-aarch64-linux \
+            .#hydraJobs.testgen-hs.aarch64-linux
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
             result-archive-x86_64-windows \
             .#hydraJobs.testgen-hs.x86_64-windows
 
@@ -48,6 +52,7 @@ jobs:
         with:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
+            result-archive-aarch64-linux/*.tar.bz2
             result-archive-x86_64-darwin/*.tar.bz2
             result-archive-aarch64-darwin/*.tar.bz2
             result-archive-x86_64-windows/*.zip

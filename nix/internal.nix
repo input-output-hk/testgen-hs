@@ -13,11 +13,32 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
 in rec {
   defaultPackage = testgen-hs;
 
-  cardano-node-flake = (import inputs.flake-compat {src = inputs.cardano-node;}).defaultNix;
+  cardano-node-flake = let
+    unpatched = inputs.cardano-node;
+  in
+    (import inputs.flake-compat {
+      src =
+        if targetSystem != "aarch64-linux"
+        then unpatched
+        else {
+          outPath = toString (pkgs.runCommand "source" {} ''
+            cp -r ${unpatched} $out
+            chmod -R +w $out
+            cd $out
+            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
+            ${lib.optionalString (targetSystem == "aarch64-linux") ''
+              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+            ''}
+          '');
+          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
+        };
+    })
+    .defaultNix;
 
   cardano-node-packages =
     {
       x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
+      aarch64-linux = cardano-node-flake.packages.aarch64-linux;
       x86_64-darwin = cardano-node-flake.packages.x86_64-darwin;
       aarch64-darwin = cardano-node-flake.packages.aarch64-darwin;
     }
@@ -35,7 +56,10 @@ in rec {
             cp -r ${unpatched} $out
             chmod -R +w $out
             cd $out
-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
+            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+            ${lib.optionalString (targetSystem == "aarch64-linux") ''
+              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+            ''}
             cp -r ${../testgen-hs} ./testgen-hs
             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
             sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
@@ -51,6 +75,7 @@ in rec {
   in
     {
       x86_64-linux = patched-flake.hydraJobs.x86_64-linux.musl.testgen-hs;
+      aarch64-linux = patched-flake.packages.aarch64-linux.testgen-hs;
       x86_64-darwin = patched-flake.packages.x86_64-darwin.testgen-hs;
       aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
       x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
@@ -113,6 +138,7 @@ in rec {
       aarch64-darwin = darwinLike;
       x86_64-darwin = darwinLike;
       x86_64-linux = linuxLike {};
+      aarch64-linux = linuxLike {};
       x86_64-windows = linuxLike {useZip = true;};
     }
     .${targetSystem};
