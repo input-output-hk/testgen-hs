@@ -7,14 +7,21 @@ import qualified Cardano.Api.Internal.Eras.Core as CAPI
 import qualified Cardano.Api.Internal.InMode as CAPI
 import qualified Cardano.Api.Internal.Modes as CAPI
 import Cardano.Api.Internal.Orphans ()
+import qualified Cardano.Binary
 import qualified Cardano.Chain.Slotting as CCS
+import qualified Cardano.Ledger.Api.Era
+import qualified Cardano.Ledger.Api.UTxO
+import qualified Cardano.Ledger.Core
 import qualified Cardano.TxSubmit.Types as CTT
 import qualified Codec.CBOR.Encoding as C
 import Codec.Serialise (Serialise)
 import qualified Codec.Serialise
 import Data.Aeson (ToJSON)
 import qualified Data.Aeson as J
+import qualified Data.ByteString.Base16 as B16
 import Data.Text (Text)
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
 import Data.Typeable (Typeable, typeOf)
 import GHC.Generics (Generic)
 import Generic.Random (GenericArbitraryU (..))
@@ -28,6 +35,7 @@ import qualified Ouroboros.Consensus.Ledger.SupportsMempool as OCLSM
 import qualified Ouroboros.Consensus.Node.ProtocolInfo as OCNPI
 import qualified Ouroboros.Consensus.Node.Serialisation as OCNS
 import qualified Ouroboros.Consensus.Shelley.Ledger as OCSL
+import qualified SynthEvalTx
 import Test.Consensus.Cardano.Generators ()
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
@@ -157,6 +165,30 @@ instance OurCBOR ApplyTxErr'Conway where
   ourToCBOR (ApplyTxErr'Conway a) = hfcEnvelope . OCCB.ApplyTxErrConway $ a
   ourToJSON (ApplyTxErr'Conway a) =
     submitApiEnvelope . CAPI.ShelleyTxValidationError CAPI.ShelleyBasedEraConway $ a
+
+newtype Tx'Conway
+  = Tx'Conway
+      ( Cardano.Ledger.Core.Tx Cardano.Ledger.Api.Era.ConwayEra,
+        Cardano.Ledger.Api.UTxO.UTxO Cardano.Ledger.Api.Era.ConwayEra
+      )
+  deriving newtype (Eq, Show)
+
+instance Arbitrary Tx'Conway where
+  arbitrary = Tx'Conway <$> SynthEvalTx.genTxUTxO
+
+instance OurCBOR Tx'Conway where
+  unwrappedType (Tx'Conway (tx, _utxo)) = show . typeOf $ tx
+  ourToCBOR (Tx'Conway (tx, _utxo)) = Cardano.Binary.toCBOR tx
+  ourToJSON (Tx'Conway (tx, utxo)) =
+    J.object
+      [ "executionUnits" J..= SynthEvalTx.eval'Conway tx utxo,
+        "utxoSetCBOR"
+          J..= ( T.decodeUtf8With T.lenientDecode
+                   . B16.encode
+                   . Cardano.Binary.serialize'
+                   $ utxo
+               )
+      ]
 
 ------- HardForkApplyTxErr -----------------------------------------------------
 

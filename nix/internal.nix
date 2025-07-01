@@ -49,6 +49,18 @@ in rec {
   testgen-hs = let
     patched-flake = let
       unpatched = inputs.cardano-node;
+      cardano-ledger-src = let
+        dep-id = cardano-node-flake.project.${buildSystem}.hsPkgs.cardano-ledger-core.identifier;
+        dep-tag = "${dep-id.name}-${dep-id.version}";
+      in
+        pkgs.fetchFromGitHub {
+          name = "cardano-ledger--${dep-tag}";
+          owner = "IntersectMBO";
+          repo = "cardano-ledger";
+          #rev = "a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1"; # the one for cardano-node 10.4.1, tag: cardano-ledger-core-1.17.0.0
+          rev = dep-tag; # the one for cardano-node 10.4.1
+          hash = "sha256-pD22f9VzNApynPhVYv0T7fsOZdbvYr1vlOxhKRhMSYk=";
+        };
     in
       (import inputs.flake-compat {
         src = {
@@ -66,7 +78,11 @@ in rec {
 
             patch -p1 -i ${./cardano-node--apply-patches.diff}
             cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
+            cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
             cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
+
+            patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
+            sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
           '');
           inherit (unpatched) rev shortRev lastModified lastModifiedDate;
         };

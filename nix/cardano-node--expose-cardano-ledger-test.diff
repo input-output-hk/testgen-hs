@@ -1,0 +1,51 @@
+diff --git a/cabal.project b/cabal.project
+index 35af620d1..ef6e74e44 100644
+--- a/cabal.project
++++ b/cabal.project
+@@ -65,6 +65,15 @@ allow-newer:
+ -- Do NOT add more source-repository-package stanzas here unless they are strictly
+ -- temporary! Please read the section in CONTRIBUTING about updating dependencies.
+ 
++source-repository-package
++  type: git
++  location: https://github.com/IntersectMBO/cardano-ledger.git
++  tag: a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1
++  subdir:
++    libs/cardano-ledger-test
++    libs/constrained-generators
++  --sha256: 12a99hc2jqgcjipvsqpgsrjhxyzd2gyn4mgqkir0ld3ksmzvcgd4
++
+ if impl (ghc >= 9.12)
+   allow-newer:
+     -- https://github.com/phadej/vec/issues/118
+diff --git a/cardano-node/cardano-node.cabal b/cardano-node/cardano-node.cabal
+index 5ff4ea573..2027d3714 100644
+--- a/cardano-node/cardano-node.cabal
++++ b/cardano-node/cardano-node.cabal
+@@ -160,6 +160,7 @@ library
+                       , cardano-ledger-conway
+                       , cardano-ledger-core
+                       , cardano-ledger-shelley
++                      , cardano-ledger-test == 9.9.9.9
+                       , cardano-prelude
+                       , cardano-protocol-tpraos >= 1.4
+                       , cardano-slotting >= 0.2
+diff --git a/nix/haskell.nix b/nix/haskell.nix
+index 1bc557d65..9277e580f 100644
+--- a/nix/haskell.nix
++++ b/nix/haskell.nix
+@@ -113,6 +113,14 @@ let
+       #
+       modules =
+         [
++          ({ lib, pkgs, ... }: {
++            packages.cardano-ledger-test = {
++              # src = CARDANO_LEDGER_SOURCE;
++              # subdir = "libs/cardano-ledger-test";
++              doCheck = false;
++              #doBenchmark = false;
++            };
++          })
+           ({ lib, pkgs, ... }: {
+             packages.cardano-ledger-core.patches = [
+               ./cardano-ledger-core--Arbitrary-PoolMetadata.diff

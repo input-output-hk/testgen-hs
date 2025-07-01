@@ -1,0 +1,13 @@
+diff --git a/src/Test/Cardano/Ledger/Generic/GenState.hs b/src/Test/Cardano/Ledger/Generic/GenState.hs
+index 95742c8b7..fa0f514a1 100644
+--- a/src/Test/Cardano/Ledger/Generic/GenState.hs
++++ b/src/Test/Cardano/Ledger/Generic/GenState.hs
+@@ -75,6 +75,8 @@ module Test.Cardano.Ledger.Generic.GenState (
+   initStableFields,
+   modifyGenStateInitialUtxo,
+   modifyGenStateInitialRewards,
++  modifyGenStateScripts,
++  modifyPlutusScripts,
+   modifyModelCount,
+   modifyModelIndex,
+   modifyModelUTxO,
