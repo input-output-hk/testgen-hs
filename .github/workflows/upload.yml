@@ -22,6 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-linux   && cp result/testgen-hs-*.* .
+          nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.aarch64-linux  && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-windows && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-darwin  && cp result/testgen-hs-*.* .
           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.aarch64-darwin && cp result/testgen-hs-*.* .
@@ -48,6 +49,12 @@ jobs:
         with:
           name: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
           path: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
+          if-no-files-found: error
+      - name: Upload Artifact (aarch64-linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: testgen-hs-${{ env.version }}-aarch64-linux.tar.bz2
+          path: testgen-hs-${{ env.version }}-aarch64-linux.tar.bz2
           if-no-files-found: error
       - name: Upload Artifact (x86_64-windows)
         uses: actions/upload-artifact@v4
