@@ -56,8 +56,8 @@ in rec {
             cp -r ${unpatched} $out
             chmod -R +w $out
             cd $out
-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
             ${lib.optionalString (targetSystem == "aarch64-linux") ''
+              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
               sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
             ''}
             cp -r ${../testgen-hs} ./testgen-hs
