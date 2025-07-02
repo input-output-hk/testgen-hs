@@ -119,7 +119,15 @@ in rec {
       pkgs.runCommandNoCC "bundle" {} ''
         mkdir -p $out
         mkdir -p testgen-hs
-        cp -R ${defaultPackage}/bin/. testgen-hs/
+        ${if targetSystem == "aarch64-linux" then ''
+          cp -R ${nix-bundle-exe defaultPackage}/. testgen-hs/
+          chmod -R +w testgen-hs/
+          mv testgen-hs/bin/testgen-hs testgen-hs/testgen-hs
+          rmdir testgen-hs/bin
+          sed -r 's/dirname/echo/' -i testgen-hs/testgen-hs
+        '' else ''
+          cp -R ${defaultPackage}/bin/. testgen-hs/
+        ''}
         ${
           if useZip
           then ''
