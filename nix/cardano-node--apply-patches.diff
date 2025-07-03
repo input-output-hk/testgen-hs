@@ -1,14 +1,18 @@
 diff --git a/nix/haskell.nix b/nix/haskell.nix
-index d5217f599..c3f6cb194 100644
+index 5db39bc61..039328c7f 100644
 --- a/nix/haskell.nix
 +++ b/nix/haskell.nix
-@@ -112,6 +112,14 @@ let
+@@ -113,6 +113,18 @@ let
        #
        modules =
          [
 +          ({ lib, pkgs, ... }: {
 +            packages.cardano-ledger-core.patches = [
 +              ./cardano-ledger-core--Arbitrary-PoolMetadata.diff
++            ];
++            packages.cardano-ledger-test.patches = [
++              ./cardano-ledger-test--expose-helpers.diff
++              ./cardano-ledger-test--windows-fix.diff
 +            ];
 +            packages.cardano-api.patches = [
 +              ./cardano-api--expose-internal.diff

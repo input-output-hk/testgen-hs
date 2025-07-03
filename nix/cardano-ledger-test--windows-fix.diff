@@ -1,0 +1,26 @@
+diff --git a/src/Test/Cardano/Ledger/Examples/BabbageFeatures.hs b/src/Test/Cardano/Ledger/Examples/BabbageFeatures.hs
+index 5cf662751..a2ab6ec47 100644
+--- a/src/Test/Cardano/Ledger/Examples/BabbageFeatures.hs
++++ b/src/Test/Cardano/Ledger/Examples/BabbageFeatures.hs
+@@ -77,7 +77,7 @@ import Data.Maybe (maybeToList)
+ import qualified Data.Sequence.Strict as StrictSeq
+ import qualified Data.Set as Set
+ import GHC.Stack
+-import Lens.Micro
++import Lens.Micro hiding (allOf)
+ import qualified PlutusLedgerApi.V1 as PV1
+ import Test.Cardano.Ledger.Alonzo.Arbitrary (mkPlutusScript')
+ import Test.Cardano.Ledger.Core.KeyPair (KeyPair (..), mkAddr, mkWitnessVKey)
+diff --git a/src/Test/Cardano/Ledger/Generic/Functions.hs b/src/Test/Cardano/Ledger/Generic/Functions.hs
+index 149ee123f..bec568be1 100644
+--- a/src/Test/Cardano/Ledger/Generic/Functions.hs
++++ b/src/Test/Cardano/Ledger/Generic/Functions.hs
+@@ -64,7 +64,7 @@ import Data.Maybe.Strict (StrictMaybe (..))
+ import Data.Sequence.Strict (StrictSeq)
+ import Data.Set (Set)
+ import qualified Data.Set as Set
+-import Lens.Micro
++import Lens.Micro hiding (anyOf, allOf)
+ import Numeric.Natural
+ import Test.Cardano.Ledger.Alonzo.Arbitrary (alwaysFailsLang, alwaysSucceedsLang)
+ import Test.Cardano.Ledger.Generic.Fields (TxOutField (..))

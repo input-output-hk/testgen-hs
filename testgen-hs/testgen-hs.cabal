@@ -17,10 +17,21 @@ executable testgen-hs
     , base16-bytestring
     , bytestring
     , cardano-api
+    , cardano-binary
+    , cardano-crypto-class
+    , cardano-ledger-alonzo
+    , cardano-ledger-api
     , cardano-ledger-byron
+    , cardano-ledger-core
+    , cardano-ledger-test
+    , cardano-slotting
     , cardano-submit-api
     , cborg
+    , containers
+    , data-default
+    , file-embed
     , generic-random
+    , microlens
     , optparse-applicative
     , ouroboros-consensus
     , ouroboros-consensus-cardano
@@ -37,6 +48,7 @@ executable testgen-hs
     Deserialize
     Generators
     Paths_testgen_hs
+    SynthEvalTx
 
   default-extensions:
     DeriveAnyClass

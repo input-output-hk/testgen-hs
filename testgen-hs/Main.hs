@@ -59,6 +59,7 @@ runGenerate (CLI.GenerateOptions maybeSeed genSize numCases command) = do
   BL8.putStrLn $ J.encode (J.object [("seed", (\(Seed s) -> J.toJSON s) seed)])
 
   ( case command of
+      CLI.Tx'Conway -> writeRandom @G.Tx'Conway Proxy
       CLI.ApplyTxErr'Byron -> writeRandom @G.ApplyTxErr'Byron Proxy
       CLI.ApplyTxErr'Shelley -> writeRandom @G.ApplyTxErr'Shelley Proxy
       CLI.ApplyTxErr'Allegra -> writeRandom @G.ApplyTxErr'Allegra Proxy

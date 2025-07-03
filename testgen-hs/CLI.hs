@@ -30,6 +30,7 @@ data TypeCommand
   = GHCInteger
   | DataText
   | ExampleADT
+  | Tx'Conway
   | ApplyTxErr'Byron
   | ApplyTxErr'Shelley
   | ApplyTxErr'Allegra
@@ -137,6 +138,7 @@ typeCommandParser :: Parser TypeCommand
 typeCommandParser =
   subparser
     ( mempty
+        <> mkTypeCommand Tx'Conway
         <> mkTypeCommand ApplyTxErr'Byron
         <> mkTypeCommand ApplyTxErr'Shelley
         <> mkTypeCommand ApplyTxErr'Allegra
