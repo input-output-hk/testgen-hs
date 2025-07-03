@@ -79,6 +79,7 @@ in rec {
             patch -p1 -i ${./cardano-node--apply-patches.diff}
             cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
             cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
+            cp  ${if targetSystem == "x86_64-windows" then ./cardano-ledger-test--windows-fix.diff else pkgs.emptyFile} nix/cardano-ledger-test--windows-fix.diff
             cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
 
             patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}

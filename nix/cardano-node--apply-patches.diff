@@ -1,8 +1,8 @@
 diff --git a/nix/haskell.nix b/nix/haskell.nix
-index 5db39bc61..4577fe532 100644
+index 5db39bc61..039328c7f 100644
 --- a/nix/haskell.nix
 +++ b/nix/haskell.nix
-@@ -113,6 +113,17 @@ let
+@@ -113,6 +113,18 @@ let
        #
        modules =
          [
@@ -12,6 +12,7 @@ index 5db39bc61..4577fe532 100644
 +            ];
 +            packages.cardano-ledger-test.patches = [
 +              ./cardano-ledger-test--expose-helpers.diff
++              ./cardano-ledger-test--windows-fix.diff
 +            ];
 +            packages.cardano-api.patches = [
 +              ./cardano-api--expose-internal.diff
