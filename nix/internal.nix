@@ -25,8 +25,8 @@ in rec {
             cp -r ${unpatched} $out
             chmod -R +w $out
             cd $out
-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
             ${lib.optionalString (targetSystem == "aarch64-linux") ''
+              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
               sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
             ''}
           '');
@@ -79,7 +79,11 @@ in rec {
             patch -p1 -i ${./cardano-node--apply-patches.diff}
             cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
             cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
-            cp  ${if targetSystem == "x86_64-windows" then ./cardano-ledger-test--windows-fix.diff else pkgs.emptyFile} nix/cardano-ledger-test--windows-fix.diff
+            cp  ${
+              if targetSystem == "x86_64-windows"
+              then ./cardano-ledger-test--windows-fix.diff
+              else pkgs.emptyFile
+            } nix/cardano-ledger-test--windows-fix.diff
             cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
 
             patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
