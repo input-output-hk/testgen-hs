@@ -5,7 +5,7 @@ synopsis:
   CBOR test case generator and deserializer for cross-checking other implementations
 
 -- Version tracks cardano-node, adding a patch segment:
-version:       10.4.1.1
+version:       10.4.1.2
 
 executable testgen-hs
   main-is:            Main.hs
@@ -20,6 +20,7 @@ executable testgen-hs
     , cardano-binary
     , cardano-crypto-class
     , cardano-ledger-alonzo
+    , cardano-ledger-binary
     , cardano-ledger-api
     , cardano-ledger-byron
     , cardano-ledger-core
