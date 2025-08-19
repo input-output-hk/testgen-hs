@@ -181,7 +181,7 @@ instance OurCBOR Tx'Conway where
   ourToCBOR (Tx'Conway (tx, _utxo)) = Cardano.Binary.toCBOR tx
   ourToJSON (Tx'Conway (tx, utxo)) =
     J.object
-      [ "executionUnits" J..= SynthEvalTx.eval'Conway tx utxo,
+      [ "executionUnits" J..= SynthEvalTx.eval'ConwayDummy tx utxo,
         "utxoSetCBOR"
           J..= ( T.decodeUtf8With T.lenientDecode
                    . B16.encode

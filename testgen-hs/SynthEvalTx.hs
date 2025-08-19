@@ -9,7 +9,7 @@
 -- | Generates a fake minimal UTxO set for a given transaction, for the purposes
 --  of running `Cardano.Ledger.Alonzo.Plutus.Evaluate.evalTxExUnits` on the
 --  transaction.
-module SynthEvalTx (eval'Conway, genTxUTxO, stubUTxO) where
+module SynthEvalTx (eval'Conway, eval'ConwayDummy, genTxUTxO, stubUTxO) where
 
 import Cardano.Crypto.Hash.Class (hashFromBytes)
 import Cardano.Ledger.Address (Addr (..))
@@ -94,8 +94,20 @@ genTxUTxO = do
     proof :: Proof.Proof Cardano.Ledger.Api.Era.ConwayEra
     proof = Proof.Conway
 
-eval'Conway :: (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra)) -> UTxO Cardano.Ledger.Api.Era.ConwayEra -> J.Value
-eval'Conway tx utxo = ogmiosSuccess redeemerReport
+eval'Conway ::
+  (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra))  ->
+  UTxO (Cardano.Ledger.Api.Era.ConwayEra) ->
+  EpochInfo (Either Text) ->
+  SystemStart ->
+  J.Value
+eval'Conway tx utxo epochInfo systemStart = ogmiosSuccess redeemerReport
+  where
+    redeemerReport :: RedeemerReport (Cardano.Ledger.Api.Era.ConwayEra)
+    redeemerReport = evalTxExUnits protocolParams tx utxo epochInfo systemStart
+
+-- | Version of eval'Conway that uses dummy epoch info and system start
+eval'ConwayDummy :: (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra)) -> UTxO Cardano.Ledger.Api.Era.ConwayEra -> J.Value
+eval'ConwayDummy tx utxo = ogmiosSuccess redeemerReport
   where
     redeemerReport :: RedeemerReport (Cardano.Ledger.Api.Era.ConwayEra)
     redeemerReport = evalTxExUnits protocolParams tx utxo dummyEpochInfo dummySystemStart
