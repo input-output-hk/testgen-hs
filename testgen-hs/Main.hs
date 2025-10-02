@@ -256,7 +256,10 @@ runEvaluateStream = do
   line <- B8.getLine
   case J.eitherDecodeStrict line of
     Left err -> do
-      hPutStrLn stderr $ "Expected InitPayload first, but failed to parse line: " ++ err
+      BL8.putStrLn . J.encode $ PayloadResponse
+                      { rJson = J.Null,
+                        rError = Just . T.pack $ "Expected InitPayload first, but failed to parse line: " ++ err
+                      }
       runEvaluateStream
     Right initPayload -> do
       let ei = convertEpochInfo (slotConfig initPayload)
@@ -267,7 +270,10 @@ runEvaluateStream = do
 
       case combinedResult of
         Left err -> do
-          hPutStrLn stderr $ "Failed to decode initial payload: " ++ err
+          BL8.putStrLn . J.encode $ PayloadResponse
+                      { rJson = J.Null,
+                        rError = Just . T.pack $ "Failed to decode initial payload " ++ err
+                      }
           exitFailure
         Right (pp, ss) -> do
           BL8.putStrLn . J.encode $ PayloadResponse { rJson = J.object [], rError = Nothing }
@@ -281,11 +287,11 @@ runEvaluateStream = do
         else do
           line <- B8.getLine
           case J.eitherDecodeStrict line of
-            Left errEval -> do
-              hPutStrLn stderr $
-                "Failed to parse line as EvalPayload (\""
-                  ++ errEval
-                  ++ "\")"
+            Left err -> do
+              BL8.putStrLn . J.encode $ PayloadResponse
+                      { rJson = J.Null,
+                        rError = Just . T.pack $ "Failed to parse line as EvalPayload" ++ err
+                      }
               processLines initPayload pp ss ei
             Right (evalPayload :: EvalPayload) -> do
               let evalResult = do
@@ -299,7 +305,10 @@ runEvaluateStream = do
 
               case evalResult of
                 Left err -> do
-                  hPutStrLn stderr $ "Failed to decode eval payload: " ++ err
+                  BL8.putStrLn . J.encode $ PayloadResponse
+                      { rJson = J.Null,
+                        rError = Just . T.pack $ err
+                      }
                   processLines initPayload pp ss ei
                 Right (tx, utxos) -> do
                   let result = SynthEvalTx.eval'Conway tx utxos ei ss
