@@ -93,12 +93,12 @@ data SlotConfig = SlotConfig
   -- This is used as a generic response to any incoming request.
 data PayloadResponse = PayloadResponse
   { rError :: Maybe Text, 
-    rJson :: J.Value
+    rJson :: Maybe J.Value
   }
   deriving (Generic, Show)
 
 instance ToJSON PayloadResponse where
-  toJSON = J.genericToJSON J.defaultOptions {J.fieldLabelModifier = modifier}
+  toJSON = J.genericToJSON J.defaultOptions {J.fieldLabelModifier = modifier, J.omitNothingFields = True}
     where
       modifier "rError" = "error"
       modifier "rJson" = "json"
@@ -257,7 +257,7 @@ runEvaluateStream = do
   case J.eitherDecodeStrict line of
     Left err -> do
       BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = J.Null,
+                      { rJson = Nothing,
                         rError = Just . T.pack $ "Expected InitPayload first, but failed to parse line: " ++ err
                       }
       runEvaluateStream
@@ -271,12 +271,12 @@ runEvaluateStream = do
       case combinedResult of
         Left err -> do
           BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = J.Null,
+                      { rJson = Nothing,
                         rError = Just . T.pack $ "Failed to decode initial payload " ++ err
                       }
           exitFailure
         Right (pp, ss) -> do
-          BL8.putStrLn . J.encode $ PayloadResponse { rJson = J.object [], rError = Nothing }
+          BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just (J.object []), rError = Nothing }
           processLines initPayload pp ss ei
   where
     processLines :: InitPayload -> PParams ConwayEra -> SystemStart -> EpochInfo (Either Text) -> IO ()
@@ -289,7 +289,7 @@ runEvaluateStream = do
           case J.eitherDecodeStrict line of
             Left err -> do
               BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = J.Null,
+                      { rJson = Nothing,
                         rError = Just . T.pack $ "Failed to parse line as EvalPayload" ++ err
                       }
               processLines initPayload pp ss ei
@@ -306,13 +306,13 @@ runEvaluateStream = do
               case evalResult of
                 Left err -> do
                   BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = J.Null,
+                      { rJson = Nothing,
                         rError = Just . T.pack $ err
                       }
                   processLines initPayload pp ss ei
                 Right (tx, utxos) -> do
                   let result = SynthEvalTx.eval'Conway tx utxos ei ss
-                  BL8.putStrLn . J.encode $ PayloadResponse { rJson = result, rError = Nothing }
+                  BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just ( result ), rError = Nothing }
                   processLines initPayload pp ss ei
 
 -- | Creates an EpochInfo from the given SlotConfig
