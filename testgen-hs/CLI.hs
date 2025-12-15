@@ -38,6 +38,7 @@ data TypeCommand
   | ApplyTxErr'Alonzo
   | ApplyTxErr'Babbage
   | ApplyTxErr'Conway
+  | TxScriptFailure'Conway
   deriving (Show)
 
 parse :: IO Command
@@ -155,6 +156,7 @@ typeCommandParser =
         <> mkTypeCommand ApplyTxErr'Alonzo
         <> mkTypeCommand ApplyTxErr'Babbage
         <> mkTypeCommand ApplyTxErr'Conway
+        <> mkTypeCommand TxScriptFailure'Conway
         <> mkTypeCommand GHCInteger
         <> mkTypeCommand DataText
         <> mkTypeCommand ExampleADT

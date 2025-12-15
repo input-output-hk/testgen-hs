@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Generators where
 
@@ -11,6 +12,7 @@ import qualified Cardano.Binary
 import qualified Cardano.Chain.Slotting as CCS
 import qualified Cardano.Ledger.Api.Era
 import qualified Cardano.Ledger.Api.UTxO
+import qualified Cardano.Ledger.Api as Ledger
 import qualified Cardano.Ledger.Core
 import qualified Cardano.TxSubmit.Types as CTT
 import qualified Codec.CBOR.Encoding as C
@@ -39,6 +41,7 @@ import qualified SynthEvalTx
 import Test.Consensus.Cardano.Generators ()
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
+import Evaluation ()
 
 -- | We define our own type class, to be able to include multiple complex
 --  encoders for our `newtype` wrappers under a single interface.
@@ -175,6 +178,9 @@ newtype Tx'Conway
 
 instance Arbitrary Tx'Conway where
   arbitrary = Tx'Conway <$> SynthEvalTx.genTxUTxO
+
+generateFailures :: IO [Ledger.TransactionScriptFailure Ledger.ConwayEra]
+generateFailures = QC.generate $ QC.vectorOf 10 QC.arbitrary
 
 instance OurCBOR Tx'Conway where
   unwrappedType (Tx'Conway (tx, _utxo)) = show . typeOf $ tx

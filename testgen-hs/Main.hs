@@ -1,4 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 
 module Main where
 
@@ -22,23 +25,25 @@ import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
+import qualified Data.ByteString as BS
 import Data.Foldable (foldl')
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import qualified Data.Text.Encoding.Error as T
+import qualified Data.Text.Encoding.Error as TEE
 import Data.Time (NominalDiffTime)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Word (Word16, Word64)
 import qualified Deserialize as D
 import GHC.Generics (Generic)
 import qualified Generators as G
-import qualified SynthEvalTx
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 import qualified System.IO as SIO
 import qualified System.Random
+import Evaluation (writeJson, eval'Conway)
+import Encoder (serializeDecoderError)
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
 import qualified Test.QuickCheck.Gen as QC
@@ -138,6 +143,7 @@ runGenerate (CLI.GenerateOptions maybeSeed genSize numCases command) = do
       CLI.ApplyTxErr'Alonzo -> writeRandom @G.ApplyTxErr'Alonzo Proxy
       CLI.ApplyTxErr'Babbage -> writeRandom @G.ApplyTxErr'Babbage Proxy
       CLI.ApplyTxErr'Conway -> writeRandom @G.ApplyTxErr'Conway Proxy
+      CLI.TxScriptFailure'Conway -> writeJson Proxy
       CLI.DataText -> writeRandom @Text Proxy
       CLI.GHCInteger -> writeRandom @Integer Proxy
       CLI.ExampleADT -> writeRandom @G.ExampleADT Proxy
@@ -189,7 +195,7 @@ mkTestCase :: forall a. (Show a, G.OurCBOR a) => a -> TestCase a
 mkTestCase a =
   TestCase
     { cbor =
-        T.decodeUtf8With T.lenientDecode
+        T.decodeUtf8With TEE.lenientDecode
           . B16.encode
           . BL.toStrict
           . C.toLazyByteString
@@ -220,7 +226,7 @@ cborToTestCase cbor' =
       let (typeTag', haskellRepr') = G.hfcEnvelopeShowInner a
        in TestCase
             { cbor =
-                T.decodeUtf8With T.lenientDecode
+                T.decodeUtf8With TEE.lenientDecode
                   . B16.encode
                   $ cbor',
               haskellRepr = T.pack haskellRepr',
@@ -285,34 +291,33 @@ runEvaluateStream = do
       if eof
         then pure ()
         else do
-          line <- B8.getLine
+          line <- B8.getLine -- This line is expected to be an EvalPayload
           case J.eitherDecodeStrict line of
             Left err -> do
-              BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = Nothing,
-                        rError = Just . T.pack $ "Failed to parse line as EvalPayload" ++ err
-                      }
+              let response = case J.eitherDecodeStrict' (B8.pack err) of
+                    Left decodeErr -> PayloadResponse { rJson = Nothing, rError = Just (T.pack $ "Failed to decode error as JSON: " ++ decodeErr ++ ". Original error: " ++ err) }
+                    Right jsonVal -> PayloadResponse { rJson = Nothing, rError = Just jsonVal }
+              BL8.putStrLn . J.encode $ response
               processLines initPayload pp ss ei
             Right (evalPayload :: EvalPayload) -> do
-              let evalResult = do
-                    let txBytes = either (Left . show) Right $ B16.decode (T.encodeUtf8 (tx evalPayload))
-                    decodedTx <- either 
-                        Left 
-                        (decodeCborWith "Transaction" (Left . show) (Binary.decCBOR @(Cardano.Ledger.Core.Tx ConwayEra)))
+              let decodedValues = do
+                    txBytes <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ B16.decode (T.encodeUtf8 (tx evalPayload))
+                    decodedTx <-
+                      decodeCborWith
+                        "Transaction"
+                        (Left . (\e -> PayloadResponse (Just (serializeDecoderError (BS.length txBytes) e)) Nothing))
+                        (Binary.decCBOR @(Cardano.Ledger.Core.Tx ConwayEra))
                         txBytes
-                    utxos <- decodeFromHex (utxos evalPayload)
+                    utxos <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ decodeFromHex (utxos evalPayload)
                     return (decodedTx, utxos)
 
-              case evalResult of
-                Left err -> do
-                  BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = Nothing,
-                        rError = Just . T.pack $ err
-                      }
+              case decodedValues of
+                Left response -> do
+                  BL8.putStrLn . J.encode $ response
                   processLines initPayload pp ss ei
                 Right (tx, utxos) -> do
-                  let result = SynthEvalTx.eval'Conway tx utxos ei ss
-                  BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just ( result ), rError = Nothing }
+                  let result = eval'Conway pp tx utxos ei ss
+                  BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just result, rError = Nothing }
                   processLines initPayload pp ss ei
 
 -- | Creates an EpochInfo from the given SlotConfig
@@ -333,13 +338,14 @@ decodeFromHex hexText = do
 -- Run a CBOR decoder for data in Conway era
 decodeCborWith
     :: Text  -- ^ Label for error reporting
-    -> (Binary.DecoderError -> Either String a)  -- ^ Error handler
+    -> (Binary.DecoderError -> Either e a)  -- ^ Error handler
     -> (forall s. Binary.Decoder s a)  -- ^ CBOR decoder
     -> ByteString  -- ^ Input bytes
-    -> Either String a
+    -> Either e a
 decodeCborWith lbl handleErr decoder bytes =
     case Binary.decodeFullDecoder version lbl decoder (BL.fromStrict bytes) of
-        Left err -> handleErr err
+        Left cborErr -> handleErr cborErr
         Right val -> Right val
   where
     version = Ledger.eraProtVerLow @ConwayEra
+

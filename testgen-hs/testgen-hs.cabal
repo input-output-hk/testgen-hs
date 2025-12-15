@@ -18,15 +18,21 @@ executable testgen-hs
     , bytestring
     , cardano-api
     , cardano-binary
+    --, cardano-crypto
     , cardano-crypto-class
+    --, cardano-crypto-wrapper
     , cardano-ledger-alonzo
-    , cardano-ledger-binary
     , cardano-ledger-api
+    , cardano-ledger-binary
+    , cardano-ledger-babbage
     , cardano-ledger-byron
+    , cardano-ledger-conway
     , cardano-ledger-core
     , cardano-ledger-test
     , cardano-slotting
     , cardano-submit-api
+    , plutus-core
+    , plutus-ledger-api
     , cborg
     , containers
     , data-default
@@ -43,6 +49,7 @@ executable testgen-hs
     , serialise
     , text
     , time
+    , prettyprinter
 
   other-modules:
     CLI
@@ -50,6 +57,9 @@ executable testgen-hs
     Generators
     Paths_testgen_hs
     SynthEvalTx
+    Evaluation
+    Response
+    Encoder
 
   default-extensions:
     DeriveAnyClass
