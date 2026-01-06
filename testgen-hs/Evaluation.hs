@@ -21,7 +21,6 @@ import qualified Data.Aeson as J
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import Data.Proxy (Proxy)
 import qualified Data.Map as Map
-import Response (PayloadResponse (..))
 import Cardano.Api.Internal.Orphans ()
 import PlutusCore.Evaluation.Machine.ExBudget (ExBudget (..))
 import PlutusCore.Evaluation.Machine.ExMemory (ExCPU (..), ExMemory (..))
@@ -29,28 +28,15 @@ import qualified Test.QuickCheck as QC
 import qualified Test.QuickCheck.Gen as QGen
 import qualified Test.QuickCheck.Random as QCRandom
 import Test.Consensus.Cardano.Generators ()
-import Cardano.Ledger.Api.Tx (BabbageEraTxBody, PlutusPurpose, RedeemerReport, Tx)
-import Cardano.Slotting.EpochInfo (EpochInfo, fixedEpochInfo)
-import Cardano.Slotting.Slot (EpochSize (..), SlotNo (..))
+import Cardano.Ledger.Api.Tx ( PlutusPurpose, RedeemerReport, Tx)
+import Cardano.Slotting.EpochInfo (EpochInfo)
+import Cardano.Slotting.Slot ()
 import Cardano.Slotting.Time (SystemStart (..))
 import Data.Text (Text)
 import Cardano.Ledger.Api.UTxO (UTxO (..))
 import Cardano.Ledger.Alonzo.Plutus.Evaluate (evalTxExUnits)
-import Cardano.Ledger.Api.Scripts
-  ( ConwayEraScript,
-    pattern CertifyingPurpose,
-    pattern MintingPurpose,
-    pattern ProposingPurpose,
-    pattern RewardingPurpose,
-    pattern SpendingPurpose,
-    pattern VotingPurpose,
-  )
-import Cardano.Ledger.Alonzo.Scripts
-  ( AsIx (..),
-    ExUnits (..),
-  )
-import qualified Cardano.Ledger.Conway.Scripts      as C
 
+import Cardano.Ledger.Alonzo.Scripts ( AsIx (..),ExUnits (..),)
 
 import qualified Data.Aeson.Encoding as AesonEncoding
 import Encoder(serializeTransactionScriptFailure, ogmiosSuccess)
@@ -74,36 +60,6 @@ instance ToJSON (WrappedTransactionScriptFailure ConwayEra) where
         error "serializeTransactionScriptFailure produced invalid JSON"
 
 
--- | Conway-normalized script purpose index.
---   All inputs are upgraded to Conway before comparison.
-newtype ConwayPurposeIx =
-  ConwayPurposeIx (PlutusPurpose AsIx ConwayEra)
-
--- | Upgrade any compatible era to Conway.
-toConwayPurposeIx
-  :: UpgradePlutusPurpose AsIx era ConwayEra
-  => PlutusPurpose AsIx era
-  -> ConwayPurposeIx
-toConwayPurposeIx =
-  ConwayPurposeIx . C.upgradePlutusPurposeAsIx
-
-
--- | Extract the script index (Conway only).
-purposeIx :: PlutusPurpose AsIx ConwayEra -> Word32
-purposeIx = \case
-  Ledger.ConwaySpending ix          -> ix
-  Ledger.ConwayMinting ix           -> ix
-  Ledger.ConwayCertifying (AsIx ix) -> ix
-  Ledger.ConwayRewarding ix         -> ix
-  Ledger.ConwayVoting (AsIx ix)     -> ix
-
-instance Eq ConwayPurposeIx where
-  (==) = (==) `on` (\(ConwayPurposeIx p) -> purposeIx p)
-
-instance Ord ConwayPurposeIx where
-  compare = compare `on` (\(ConwayPurposeIx p) -> purposeIx p)
-
- 
 instance QC.Arbitrary (Ledger.TransactionScriptFailure Ledger.ConwayEra) where
   arbitrary =
     QC.oneof
@@ -146,9 +102,28 @@ eval'Conway pparams tx utxo epochInfo systemStart =
 
   where
     redeemerReport :: RedeemerReport ConwayEra
-    redeemerReport = evalTxExUnits pparams  tx utxo epochInfo systemStart
+    redeemerReport = selectSingleReport fullReport
 
-    groupReports :: PlutusPurpose AsIx era
+    fullReport :: RedeemerReport ConwayEra
+    fullReport = evalTxExUnits pparams  tx utxo epochInfo systemStart
+
+    -- Collapse the full report down to a single entry, preferring failures.
+    selectSingleReport :: RedeemerReport ConwayEra -> RedeemerReport ConwayEra
+    selectSingleReport report =
+      case Map.toList failures of
+        (purpose, errors) : _ ->
+          Map.singleton purpose (Left (pickScriptFailure errors))
+        [] ->
+          case Map.toList successes of
+            (purpose, exUnits) : _ ->
+              Map.singleton purpose (Right exUnits)
+            [] ->
+              error "Empty redeemer report from evalTxExUnits"
+      where
+        (failures, successes) = Map.foldrWithKey groupReports (Map.empty, Map.empty) report
+
+    groupReports :: Ord (PlutusPurpose AsIx era)
+      => PlutusPurpose AsIx era
       -> Either (Ledger.TransactionScriptFailure era) ExUnits
       -> (Map.Map (PlutusPurpose AsIx era) [Ledger.TransactionScriptFailure era ], Map.Map (PlutusPurpose AsIx era) ExUnits)
       -> (Map.Map (PlutusPurpose AsIx era) [Ledger.TransactionScriptFailure era], Map.Map (PlutusPurpose AsIx era) ExUnits)
