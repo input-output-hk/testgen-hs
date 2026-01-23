@@ -16,6 +16,7 @@ import Cardano.Slotting.Time (SystemStart (..), mkSlotLength)
 import qualified Codec.CBOR.Write as C
 import qualified Control.Concurrent.Async as Async
 import Control.Concurrent.MVar (modifyMVar_, newMVar)
+import Control.Monad (forever, when)
 import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
@@ -38,7 +39,7 @@ import Data.Word (Word16, Word64)
 import qualified Deserialize as D
 import GHC.Generics (Generic)
 import qualified Generators as G
-import System.Exit (exitFailure)
+import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPutStrLn, stderr)
 import qualified System.IO as SIO
 import qualified System.Random
@@ -283,42 +284,37 @@ runEvaluateStream = do
           exitFailure
         Right (pp, ss) -> do
           BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just (J.object []), rError = Nothing }
-          processLines initPayload pp ss ei
+          forever $ processLine pp ss ei
   where
-    processLines :: InitPayload -> PParams ConwayEra -> SystemStart -> EpochInfo (Either Text) -> IO ()
-    processLines initPayload pp ss ei = do
+    processLine :: PParams ConwayEra -> SystemStart -> EpochInfo (Either Text) -> IO ()
+    processLine pp ss ei = do
       eof <- SIO.isEOF
-      if eof
-        then pure ()
-        else do
-          line <- B8.getLine -- This line is expected to be an EvalPayload
-          case J.eitherDecodeStrict line of
-            Left err -> do
-              let response = case J.eitherDecodeStrict' (B8.pack err) of
-                    Left decodeErr -> PayloadResponse { rJson = Nothing, rError = Just (T.pack $ "Failed to decode error as JSON: " ++ decodeErr ++ ". Original error: " ++ err) }
-                    Right jsonVal -> PayloadResponse { rJson = Nothing, rError = Just jsonVal }
-              BL8.putStrLn . J.encode $ response
-              processLines initPayload pp ss ei
-            Right (evalPayload :: EvalPayload) -> do
-              let decodedValues = do
-                    txBytes <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ B16.decode (T.encodeUtf8 (tx evalPayload))
-                    decodedTx <-
-                      decodeCborWith
-                        "Transaction"
-                        (Left . (\e -> PayloadResponse (Just (serializeDecoderError (BS.length txBytes) e)) Nothing))
-                        (Binary.decCBOR @(Cardano.Ledger.Core.Tx ConwayEra))
-                        txBytes
-                    utxos <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ decodeFromHex (utxos evalPayload)
-                    return (decodedTx, utxos)
+      when eof exitSuccess
+      line <- B8.getLine -- This line is expected to be an EvalPayload
+      case J.eitherDecodeStrict line of
+        Left err -> do
+          let response = case J.eitherDecodeStrict' (B8.pack err) of
+                Left decodeErr -> PayloadResponse { rJson = Nothing, rError = Just (T.pack $ "Failed to decode error as JSON: " ++ decodeErr ++ ". Original error: " ++ err) }
+                Right jsonVal -> PayloadResponse { rJson = Nothing, rError = Just jsonVal }
+          BL8.putStrLn . J.encode $ response
+        Right (evalPayload :: EvalPayload) -> do
+          let decodedValues = do
+                txBytes <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ B16.decode (T.encodeUtf8 (tx evalPayload))
+                decodedTx <-
+                  decodeCborWith
+                    "Transaction"
+                    (Left . (\e -> PayloadResponse (Just (serializeDecoderError (BS.length txBytes) e)) Nothing))
+                    (Binary.decCBOR @(Cardano.Ledger.Core.Tx ConwayEra))
+                    txBytes
+                utxos <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ decodeFromHex (utxos evalPayload)
+                return (decodedTx, utxos)
 
-              case decodedValues of
-                Left response -> do
-                  BL8.putStrLn . J.encode $ response
-                  processLines initPayload pp ss ei
-                Right (tx, utxos) -> do
-                  let result = eval'Conway pp tx utxos ei ss
-                  BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just result, rError = Nothing }
-                  processLines initPayload pp ss ei
+          case decodedValues of
+            Left response ->
+              BL8.putStrLn . J.encode $ response
+            Right (tx, utxos) -> do
+              let result = eval'Conway pp tx utxos ei ss
+              BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just result, rError = Nothing }
 
 -- | Creates an EpochInfo from the given SlotConfig
 convertEpochInfo :: SlotConfig -> EpochInfo (Either Text)
@@ -348,4 +344,3 @@ decodeCborWith lbl handleErr decoder bytes =
         Right val -> Right val
   where
     version = Ledger.eraProtVerLow @ConwayEra
-

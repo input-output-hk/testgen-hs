@@ -12,7 +12,6 @@ import qualified Cardano.Binary
 import qualified Cardano.Chain.Slotting as CCS
 import qualified Cardano.Ledger.Api.Era
 import qualified Cardano.Ledger.Api.UTxO
-import qualified Cardano.Ledger.Api as Ledger
 import qualified Cardano.Ledger.Core
 import qualified Cardano.TxSubmit.Types as CTT
 import qualified Codec.CBOR.Encoding as C
@@ -178,9 +177,6 @@ newtype Tx'Conway
 
 instance Arbitrary Tx'Conway where
   arbitrary = Tx'Conway <$> SynthEvalTx.genTxUTxO
-
-generateFailures :: IO [Ledger.TransactionScriptFailure Ledger.ConwayEra]
-generateFailures = QC.generate $ QC.vectorOf 10 QC.arbitrary
 
 instance OurCBOR Tx'Conway where
   unwrappedType (Tx'Conway (tx, _utxo)) = show . typeOf $ tx

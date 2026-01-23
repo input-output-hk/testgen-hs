@@ -41,8 +41,6 @@ import Cardano.Ledger.Alonzo.Scripts ( AsIx (..),ExUnits (..),)
 import qualified Data.Aeson.Encoding as AesonEncoding
 import Encoder(serializeTransactionScriptFailure, ogmiosSuccess)
 import Data.List (sortOn)
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe (fromMaybe)
  
  
 newtype WrappedTransactionScriptFailure era = WrappedTransactionScriptFailure
@@ -136,22 +134,21 @@ eval'Conway pparams tx utxo epochInfo systemStart =
 pickScriptFailure ::
   [Ledger.TransactionScriptFailure era]
   -> Ledger.TransactionScriptFailure era
-pickScriptFailure =
-  NE.head
-    . fromMaybe (error "Empty list of script failures from the ledger!?")
-    . NE.nonEmpty
-    . sortOn scriptFailurePriority
-    where
-      scriptFailurePriority ::
-        Ledger.TransactionScriptFailure era
-        -> Word
-      scriptFailurePriority = \case
-        Ledger.UnknownTxIn{} -> 0
-        Ledger.MissingScript{} -> 0
-        Ledger.RedeemerPointsToUnknownScriptHash{} -> 1
-        Ledger.NoCostModelInLedgerState{} -> 1
-        Ledger.InvalidTxIn{} -> 2
-        Ledger.MissingDatum{} -> 3
-        Ledger.ContextError{} -> 4
-        Ledger.ValidationFailure{} -> 5
-        Ledger.IncompatibleBudget{} -> 999
+pickScriptFailure xs =
+  case sortOn scriptFailurePriority xs of
+    [] -> error "Empty list of script failures from the ledger!?"
+    x : _ -> x
+  where
+    scriptFailurePriority ::
+      Ledger.TransactionScriptFailure era
+      -> Word
+    scriptFailurePriority = \case
+      Ledger.UnknownTxIn{} -> 0
+      Ledger.MissingScript{} -> 0
+      Ledger.RedeemerPointsToUnknownScriptHash{} -> 1
+      Ledger.NoCostModelInLedgerState{} -> 1
+      Ledger.InvalidTxIn{} -> 2
+      Ledger.MissingDatum{} -> 3
+      Ledger.ContextError{} -> 4
+      Ledger.ValidationFailure{} -> 5
+      Ledger.IncompatibleBudget{} -> 999
