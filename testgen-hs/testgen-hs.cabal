@@ -18,21 +18,17 @@ executable testgen-hs
     , bytestring
     , cardano-api
     , cardano-binary
-    --, cardano-crypto
     , cardano-crypto-class
-    --, cardano-crypto-wrapper
     , cardano-ledger-alonzo
     , cardano-ledger-api
-    , cardano-ledger-binary
     , cardano-ledger-babbage
+    , cardano-ledger-binary
     , cardano-ledger-byron
     , cardano-ledger-conway
     , cardano-ledger-core
     , cardano-ledger-test
     , cardano-slotting
     , cardano-submit-api
-    , plutus-core
-    , plutus-ledger-api
     , cborg
     , containers
     , data-default
@@ -43,23 +39,27 @@ executable testgen-hs
     , ouroboros-consensus
     , ouroboros-consensus-cardano
     , ouroboros-consensus-cardano:unstable-cardano-testlib
+    , plutus-core
+    , plutus-ledger-api
+    , prettyprinter
     , QuickCheck
     , quickcheck-instances
     , random
     , serialise
     , text
     , time
-    , prettyprinter
 
+  --, cardano-crypto
+  --, cardano-crypto-wrapper
   other-modules:
     CLI
     Deserialize
+    Encoder
+    Evaluation
     Generators
     Paths_testgen_hs
-    SynthEvalTx
-    Evaluation
     Response
-    Encoder
+    SynthEvalTx
 
   default-extensions:
     DeriveAnyClass

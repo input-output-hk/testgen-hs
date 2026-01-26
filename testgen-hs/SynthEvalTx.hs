@@ -83,7 +83,7 @@ genTxUTxO = do
     proof = Proof.Conway
 
 eval'Conway ::
-  (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra))  ->
+  (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra)) ->
   UTxO (Cardano.Ledger.Api.Era.ConwayEra) ->
   EpochInfo (Either Text) ->
   SystemStart ->

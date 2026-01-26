@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Generators where
 
@@ -24,6 +24,7 @@ import Data.Text (Text)
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 import Data.Typeable (Typeable, typeOf)
+import Evaluation ()
 import GHC.Generics (Generic)
 import Generic.Random (GenericArbitraryU (..))
 import qualified Ouroboros.Consensus.Byron.Ledger as OCBL
@@ -40,7 +41,6 @@ import qualified SynthEvalTx
 import Test.Consensus.Cardano.Generators ()
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
-import Evaluation ()
 
 -- | We define our own type class, to be able to include multiple complex
 --  encoders for our `newtype` wrappers under a single interface.

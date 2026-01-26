@@ -1,7 +1,6 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
-
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
@@ -9,7 +8,9 @@ import CLI (GenSize (..), NumCases (..), Seed (..))
 import qualified CLI
 import Cardano.Binary (FromCBOR, decodeFull')
 import Cardano.Ledger.Api (ConwayEra, PParams)
+import qualified Cardano.Ledger.Binary.Decoding as Binary
 import qualified Cardano.Ledger.Core
+import qualified Cardano.Ledger.Core as Ledger
 import Cardano.Slotting.EpochInfo (EpochInfo, fixedEpochInfo)
 import Cardano.Slotting.Slot (EpochSize (..))
 import Cardano.Slotting.Time (SystemStart (..), mkSlotLength)
@@ -22,11 +23,11 @@ import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
-import qualified Data.ByteString as BS
 import Data.Foldable (foldl')
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
@@ -37,21 +38,19 @@ import Data.Time (NominalDiffTime)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Word (Word16, Word64)
 import qualified Deserialize as D
+import Encoder (serializeDecoderError)
+import Evaluation (eval'Conway, writeJson)
 import GHC.Generics (Generic)
 import qualified Generators as G
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (hPutStrLn, stderr)
 import qualified System.IO as SIO
 import qualified System.Random
-import Evaluation (writeJson, eval'Conway)
-import Encoder (serializeDecoderError)
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
 import qualified Test.QuickCheck.Gen as QC
 import Test.QuickCheck.Instances.Text ()
 import qualified Test.QuickCheck.Random as QC
-import qualified Cardano.Ledger.Binary.Decoding as Binary
-import qualified Cardano.Ledger.Core as Ledger
 
 main :: IO ()
 main =
@@ -81,8 +80,8 @@ data TestCase a = TestCase
 -- This data type implements Generic, Show and FromJSON type classes for serialization
 -- and debugging purposes.
 data InitPayload = InitPayload
-  { systemStart :: Text, --cbor
-    protocolParams :: Text, --cbor
+  { systemStart :: Text, -- cbor
+    protocolParams :: Text, -- cbor
     slotConfig :: SlotConfig,
     era :: Word16
   }
@@ -96,9 +95,9 @@ data SlotConfig = SlotConfig
   }
   deriving (Generic, Show, FromJSON)
 
-  -- This is used as a generic response to any incoming request.
+-- This is used as a generic response to any incoming request.
 data PayloadResponse = PayloadResponse
-  { rError :: Maybe Text, 
+  { rError :: Maybe Text,
     rJson :: Maybe J.Value
   }
   deriving (Generic, Show)
@@ -109,7 +108,6 @@ instance ToJSON PayloadResponse where
       modifier "rError" = "error"
       modifier "rJson" = "json"
       modifier s = s
-
 
 -- |
 --    EvalPayload represents the data structure for transaction evaluation payload.
@@ -263,10 +261,11 @@ runEvaluateStream = do
   line <- B8.getLine
   case J.eitherDecodeStrict line of
     Left err -> do
-      BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = Nothing,
-                        rError = Just . T.pack $ "Expected InitPayload first, but failed to parse line: " ++ err
-                      }
+      BL8.putStrLn . J.encode $
+        PayloadResponse
+          { rJson = Nothing,
+            rError = Just . T.pack $ "Expected InitPayload first, but failed to parse line: " ++ err
+          }
       runEvaluateStream
     Right initPayload -> do
       let ei = convertEpochInfo (slotConfig initPayload)
@@ -277,13 +276,14 @@ runEvaluateStream = do
 
       case combinedResult of
         Left err -> do
-          BL8.putStrLn . J.encode $ PayloadResponse
-                      { rJson = Nothing,
-                        rError = Just . T.pack $ "Failed to decode initial payload " ++ err
-                      }
+          BL8.putStrLn . J.encode $
+            PayloadResponse
+              { rJson = Nothing,
+                rError = Just . T.pack $ "Failed to decode initial payload " ++ err
+              }
           exitFailure
         Right (pp, ss) -> do
-          BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just (J.object []), rError = Nothing }
+          BL8.putStrLn . J.encode $ PayloadResponse {rJson = Just (J.object []), rError = Nothing}
           forever $ processLine pp ss ei
   where
     processLine :: PParams ConwayEra -> SystemStart -> EpochInfo (Either Text) -> IO ()
@@ -294,8 +294,8 @@ runEvaluateStream = do
       case J.eitherDecodeStrict line of
         Left err -> do
           let response = case J.eitherDecodeStrict' (B8.pack err) of
-                Left decodeErr -> PayloadResponse { rJson = Nothing, rError = Just (T.pack $ "Failed to decode error as JSON: " ++ decodeErr ++ ". Original error: " ++ err) }
-                Right jsonVal -> PayloadResponse { rJson = Nothing, rError = Just jsonVal }
+                Left decodeErr -> PayloadResponse {rJson = Nothing, rError = Just (T.pack $ "Failed to decode error as JSON: " ++ decodeErr ++ ". Original error: " ++ err)}
+                Right jsonVal -> PayloadResponse {rJson = Nothing, rError = Just jsonVal}
           BL8.putStrLn . J.encode $ response
         Right (evalPayload :: EvalPayload) -> do
           let decodedValues = do
@@ -314,7 +314,7 @@ runEvaluateStream = do
               BL8.putStrLn . J.encode $ response
             Right (tx, utxos) -> do
               let result = eval'Conway pp tx utxos ei ss
-              BL8.putStrLn . J.encode $ PayloadResponse { rJson = Just result, rError = Nothing }
+              BL8.putStrLn . J.encode $ PayloadResponse {rJson = Just result, rError = Nothing}
 
 -- | Creates an EpochInfo from the given SlotConfig
 convertEpochInfo :: SlotConfig -> EpochInfo (Either Text)
@@ -330,17 +330,20 @@ decodeFromHex hexText = do
   -- 2. Decode from CBOR.
   first show $ decodeFull' cborBytes
 
-
 -- Run a CBOR decoder for data in Conway era
-decodeCborWith
-    :: Text  -- ^ Label for error reporting
-    -> (Binary.DecoderError -> Either e a)  -- ^ Error handler
-    -> (forall s. Binary.Decoder s a)  -- ^ CBOR decoder
-    -> ByteString  -- ^ Input bytes
-    -> Either e a
+decodeCborWith ::
+  -- | Label for error reporting
+  Text ->
+  -- | Error handler
+  (Binary.DecoderError -> Either e a) ->
+  -- | CBOR decoder
+  (forall s. Binary.Decoder s a) ->
+  -- | Input bytes
+  ByteString ->
+  Either e a
 decodeCborWith lbl handleErr decoder bytes =
-    case Binary.decodeFullDecoder version lbl decoder (BL.fromStrict bytes) of
-        Left cborErr -> handleErr cborErr
-        Right val -> Right val
+  case Binary.decodeFullDecoder version lbl decoder (BL.fromStrict bytes) of
+    Left cborErr -> handleErr cborErr
+    Right val -> Right val
   where
     version = Ledger.eraProtVerLow @ConwayEra

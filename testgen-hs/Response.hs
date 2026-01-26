@@ -1,6 +1,7 @@
 module Response
   ( PayloadResponse (..),
-  ) where
+  )
+where
 
 import Data.Aeson (ToJSON)
 import qualified Data.Aeson as J
