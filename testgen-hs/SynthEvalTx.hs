@@ -14,24 +14,11 @@ module SynthEvalTx (eval'Conway, eval'ConwayDummy, genTxUTxO, stubUTxO) where
 import Cardano.Crypto.Hash.Class (hashFromBytes)
 import Cardano.Ledger.Address (Addr (..))
 import Cardano.Ledger.Alonzo.Plutus.Evaluate (evalTxExUnits)
-import Cardano.Ledger.Alonzo.Scripts
-  ( AsIx (..),
-    ExUnits (..),
-  )
 import qualified Cardano.Ledger.Alonzo.Scripts
 import qualified Cardano.Ledger.Alonzo.Tx
 import Cardano.Ledger.Api (EraTx, PParams, bodyTxL, collateralInputsTxBodyL, inputsTxBodyL, referenceInputsTxBodyL)
 import qualified Cardano.Ledger.Api.Era
-import Cardano.Ledger.Api.Scripts
-  ( ConwayEraScript,
-    pattern CertifyingPurpose,
-    pattern MintingPurpose,
-    pattern ProposingPurpose,
-    pattern RewardingPurpose,
-    pattern SpendingPurpose,
-    pattern VotingPurpose,
-  )
-import Cardano.Ledger.Api.Tx (BabbageEraTxBody, PlutusPurpose, RedeemerReport, Tx)
+import Cardano.Ledger.Api.Tx (BabbageEraTxBody, RedeemerReport, Tx)
 import Cardano.Ledger.Api.Tx.In (TxIn)
 import Cardano.Ledger.Api.Tx.Out
   ( TxOut (..),
@@ -53,15 +40,16 @@ import Data.Aeson
   ( eitherDecodeStrict',
   )
 import qualified Data.Aeson as J
+import qualified Data.Aeson.Encoding as AesonEncoding
 import qualified Data.ByteString as BS
 import qualified Data.Default
 import Data.FileEmbed (embedFile)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Time.Calendar (fromGregorian)
 import Data.Time.Clock (UTCTime (..), secondsToDiffTime)
+import Encoder (ogmiosSuccess)
 import Lens.Micro ((^.))
 import qualified Test.Cardano.Ledger.Generic.GenState
 import qualified Test.Cardano.Ledger.Generic.Proof as Proof
@@ -100,14 +88,20 @@ eval'Conway ::
   EpochInfo (Either Text) ->
   SystemStart ->
   J.Value
-eval'Conway tx utxo epochInfo systemStart = ogmiosSuccess redeemerReport
+eval'Conway tx utxo epochInfo systemStart =
+  case J.decode (AesonEncoding.encodingToLazyByteString (ogmiosSuccess redeemerReport)) of
+    Just v -> v
+    Nothing -> error "ogmiosSuccess produced invalid JSON"
   where
     redeemerReport :: RedeemerReport (Cardano.Ledger.Api.Era.ConwayEra)
     redeemerReport = evalTxExUnits protocolParams tx utxo epochInfo systemStart
 
 -- | Version of eval'Conway that uses dummy epoch info and system start
 eval'ConwayDummy :: (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra)) -> UTxO Cardano.Ledger.Api.Era.ConwayEra -> J.Value
-eval'ConwayDummy tx utxo = ogmiosSuccess redeemerReport
+eval'ConwayDummy tx utxo =
+  case J.decode (AesonEncoding.encodingToLazyByteString (ogmiosSuccess redeemerReport)) of
+    Just v -> v
+    Nothing -> error "ogmiosSuccess produced invalid JSON"
   where
     redeemerReport :: RedeemerReport (Cardano.Ledger.Api.Era.ConwayEra)
     redeemerReport = evalTxExUnits protocolParams tx utxo dummyEpochInfo dummySystemStart
@@ -154,46 +148,3 @@ protocolParams =
   case eitherDecodeStrict' protocolParamsJSON of
     Left err -> error $ "Embedded protocol-parameters JSON is malformed:\n" <> err
     Right pp -> pp
-
--- | Render a ledger redeemer pointer the Ogmios way
-redeemerPtrToText :: forall era. (ConwayEraScript era) => PlutusPurpose AsIx era -> Text
-redeemerPtrToText = \case
-  SpendingPurpose (AsIx ix) -> "spend:" <> showT ix
-  CertifyingPurpose (AsIx ix) -> "publish:" <> showT ix
-  MintingPurpose (AsIx ix) -> "mint:" <> showT ix
-  RewardingPurpose (AsIx ix) -> "withdraw:" <> showT ix
-  ProposingPurpose (AsIx ix) -> "propose:" <> showT ix
-  VotingPurpose (AsIx ix) -> "vote:" <> showT ix
-  _ -> error "unreachable: unknown PlutusPurpose" -- matches _are_ exhaustive, but it’s not provable statically
-  where
-    showT = T.pack . show -- Word32 → Text
-
--- | Ogmios "budget" object from 'ExUnits'.
-exUnitsToJSON :: ExUnits -> J.Value
-exUnitsToJSON (ExUnits mem cpu) =
-  J.object ["memory" J..= mem, "cpu" J..= cpu]
-
--- | Build the JSON-RPC success envelope that Ogmios returns when every
---   redeemer succeeds.
-ogmiosSuccess ::
-  forall era err.
-  (ConwayEraScript era, Show err) => -- same constraint here
-  Map.Map (PlutusPurpose AsIx era) (Either err ExUnits) ->
-  J.Value
-ogmiosSuccess report =
-  J.toJSON
-    [ case res of
-        Right exu ->
-          J.object
-            [ "validator" J..= redeemerPtrToText ptr,
-              "budget" J..= exUnitsToJSON exu
-            ]
-        Left err ->
-          J.object
-            [ "validator" J..= redeemerPtrToText ptr,
-              "error"
-                J..= J.object
-                  ["message" J..= show err] -- simple text trace
-            ]
-      | (ptr, res) <- Map.toList report
-    ]

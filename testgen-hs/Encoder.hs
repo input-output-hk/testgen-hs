@@ -5,14 +5,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Encoder
-  ( serializeScriptPurposeIndex
-  , serializeTransactionScriptFailure
-  , serializeTxIn
-  , serializeTxId
-  , serializeHash
-  , serializeFoldable
+  ( serializeTransactionScriptFailure
   , serializeDecoderError
-  , ogmiosError
   , ogmiosSuccess
   ) where
 
@@ -154,8 +148,6 @@ serializeScriptPurposeIndex = \case
         J.pairs $
              J.pair "index"   (A.toEncoding ix)
           <> J.pair "purpose" (J.text purpose)
-
-
 
 serializeExBudget
     :: P.ExBudget
@@ -390,6 +382,7 @@ serializeTransactionScriptFailure = \case
 
 
 
+-- | Human-readable CBOR decode errors. Kept for Ogmios compatibility & future-use even when unused.
 serializeDecoderError :: Int -> Binary.DecoderError -> Text
 serializeDecoderError size = extractId . reduceNoise . \case
     Binary.DecoderErrorCanonicityViolation lbl ->
