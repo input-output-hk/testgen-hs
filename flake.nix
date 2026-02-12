@@ -51,7 +51,7 @@
           programs.ormolu.enable = true; # Haskell
           programs.cabal-fmt.enable = true;
           programs.shfmt.enable = true;
-          programs.yamlfmt.enable = true;
+          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
         };
       };
 
