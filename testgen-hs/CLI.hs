@@ -16,7 +16,7 @@ import qualified Data.Version as V
 import Options.Applicative as O
 import qualified Paths_testgen_hs as V
 
-data Command = Generate GenerateOptions | Deserialize ByteString | DeserializeStream deriving (Show)
+data Command = Generate GenerateOptions | Deserialize ByteString | DeserializeStream | EvaluateStream deriving (Show)
 
 data GenerateOptions = GenerateOptions (Maybe Seed) GenSize NumCases TypeCommand deriving (Show)
 
@@ -30,7 +30,7 @@ data TypeCommand
   = GHCInteger
   | DataText
   | ExampleADT
-  | Tx'Conway
+  | Tx'ConwayDummy
   | ApplyTxErr'Byron
   | ApplyTxErr'Shelley
   | ApplyTxErr'Allegra
@@ -38,6 +38,7 @@ data TypeCommand
   | ApplyTxErr'Alonzo
   | ApplyTxErr'Babbage
   | ApplyTxErr'Conway
+  | TxScriptFailure'Conway
   deriving (Show)
 
 parse :: IO Command
@@ -90,6 +91,15 @@ commandParser =
                    (progDesc "Deserialize an STDIN stream of multiple lines of base16-encoded CBOR of ‘HardForkApplyTxErr’")
                )
            )
+        <> ( command
+               "evaluate-stream"
+               ( info
+                   ( pure EvaluateStream
+                       <**> helper
+                   )
+                   (progDesc "Evaluate an STDIN stream of Txs with Utxos")
+               )
+           )
     )
 
 optionsParser :: Parser GenerateOptions
@@ -138,7 +148,7 @@ typeCommandParser :: Parser TypeCommand
 typeCommandParser =
   subparser
     ( mempty
-        <> mkTypeCommand Tx'Conway
+        <> mkTypeCommand Tx'ConwayDummy
         <> mkTypeCommand ApplyTxErr'Byron
         <> mkTypeCommand ApplyTxErr'Shelley
         <> mkTypeCommand ApplyTxErr'Allegra
@@ -146,6 +156,7 @@ typeCommandParser =
         <> mkTypeCommand ApplyTxErr'Alonzo
         <> mkTypeCommand ApplyTxErr'Babbage
         <> mkTypeCommand ApplyTxErr'Conway
+        <> mkTypeCommand TxScriptFailure'Conway
         <> mkTypeCommand GHCInteger
         <> mkTypeCommand DataText
         <> mkTypeCommand ExampleADT

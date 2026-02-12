@@ -5,7 +5,7 @@ synopsis:
   CBOR test case generator and deserializer for cross-checking other implementations
 
 -- Version tracks cardano-node, adding a patch segment:
-version:       10.4.1.1
+version:       10.4.1.2
 
 executable testgen-hs
   main-is:            Main.hs
@@ -21,7 +21,10 @@ executable testgen-hs
     , cardano-crypto-class
     , cardano-ledger-alonzo
     , cardano-ledger-api
+    , cardano-ledger-babbage
+    , cardano-ledger-binary
     , cardano-ledger-byron
+    , cardano-ledger-conway
     , cardano-ledger-core
     , cardano-ledger-test
     , cardano-slotting
@@ -36,6 +39,9 @@ executable testgen-hs
     , ouroboros-consensus
     , ouroboros-consensus-cardano
     , ouroboros-consensus-cardano:unstable-cardano-testlib
+    , plutus-core
+    , plutus-ledger-api
+    , prettyprinter
     , QuickCheck
     , quickcheck-instances
     , random
@@ -43,11 +49,16 @@ executable testgen-hs
     , text
     , time
 
+  --, cardano-crypto
+  --, cardano-crypto-wrapper
   other-modules:
     CLI
     Deserialize
+    Encoder
+    Evaluation
     Generators
     Paths_testgen_hs
+    Response
     SynthEvalTx
 
   default-extensions:

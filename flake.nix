@@ -51,20 +51,26 @@
           programs.ormolu.enable = true; # Haskell
           programs.cabal-fmt.enable = true;
           programs.shfmt.enable = true;
-          programs.yamlfmt.enable = true;
+          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
         };
       };
 
-      flake.hydraJobs = {
-        testgen-hs = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
-          targetSystem: inputs.self.internal.${targetSystem}.hydraPackage
-        );
-        required = inputs.nixpkgs.legacyPackages.x86_64-linux.releaseTools.aggregate {
-          name = "github-required";
-          meta.description = "All jobs required to pass CI";
-          constituents =
-            lib.collect lib.isDerivation inputs.self.hydraJobs.testgen-hs;
+      flake.hydraJobs = let
+        allJobs = {
+          testgen-hs = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+            targetSystem: inputs.self.internal.${targetSystem}.hydraPackage
+          );
+          inherit (inputs.self) checks;
         };
-      };
+      in
+        allJobs
+        // {
+          required = inputs.nixpkgs.legacyPackages.x86_64-linux.releaseTools.aggregate {
+            name = "github-required";
+            meta.description = "All jobs required to pass CI";
+            constituents =
+              lib.collect lib.isDerivation allJobs;
+          };
+        };
     });
 }
