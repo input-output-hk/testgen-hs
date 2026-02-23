@@ -1,8 +1,8 @@
 diff --git a/nix/haskell.nix b/nix/haskell.nix
-index 5db39bc61..039328c7f 100644
+index 52a57b06bb..5e84f31753 100644
 --- a/nix/haskell.nix
 +++ b/nix/haskell.nix
-@@ -113,6 +113,18 @@ let
+@@ -122,6 +122,18 @@ let
        #
        modules =
          [
@@ -19,5 +19,5 @@ index 5db39bc61..039328c7f 100644
 +            ];
 +          })
            ({ lib, pkgs, ... }: {
-             packages.cardano-tracer.package.buildable = with pkgs.stdenv.hostPlatform; lib.mkForce (!isMusl);
              packages.cardano-node-chairman.components.tests.chairman-tests.buildable = lib.mkForce pkgs.stdenv.hostPlatform.isUnix;
+             package-keys = ["plutus-tx-plugin"];

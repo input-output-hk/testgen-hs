@@ -1,35 +1,31 @@
 diff --git a/cardano-api.cabal b/cardano-api.cabal
-index 1e76d5160..3a2944853 100644
+index 6746e30c2..d94794832 100644
 --- a/cardano-api.cabal
 +++ b/cardano-api.cabal
-@@ -76,12 +76,14 @@ library
-     Cardano.Api.Internal.DRepMetadata
-     Cardano.Api.Internal.Eon.ShelleyBasedEra
-     Cardano.Api.Internal.Eras
-+    Cardano.Api.Internal.Eras.Core
-     Cardano.Api.Internal.Error
-     Cardano.Api.Internal.Fees
-     Cardano.Api.Internal.Genesis
-     Cardano.Api.Internal.GenesisParameters
-     Cardano.Api.Internal.Governance.Metadata.Validation
-     Cardano.Api.Internal.IO
-+    Cardano.Api.Internal.InMode
-     Cardano.Api.Internal.LedgerState
-     Cardano.Api.Internal.Modes
+@@ -205,12 +205,16 @@ library
+     Cardano.Api.Certificate.Internal.DRepMetadata
+     Cardano.Api.Certificate.Internal.OperationalCertificate
+     Cardano.Api.Certificate.Internal.StakePoolMetadata
++  exposed-modules:
+     Cardano.Api.Consensus.Internal.InMode
++  other-modules:
+     Cardano.Api.Consensus.Internal.Mode
+     Cardano.Api.Consensus.Internal.Protocol
+     Cardano.Api.Consensus.Internal.Reexport
+     Cardano.Api.Era.Internal.Case
++  exposed-modules:
+     Cardano.Api.Era.Internal.Core
++  other-modules:
+     Cardano.Api.Era.Internal.Eon.AllegraEraOnwards
+     Cardano.Api.Era.Internal.Eon.AlonzoEraOnwards
+     Cardano.Api.Era.Internal.Eon.BabbageEraOnwards
+@@ -252,7 +256,9 @@ library
+     Cardano.Api.IO.Internal.Compat.Posix
+     Cardano.Api.IO.Internal.Compat.Wasm
+     Cardano.Api.IO.Internal.Compat.Win32
++  exposed-modules:
      Cardano.Api.Internal.Orphans
-@@ -203,7 +205,6 @@ library
-     Cardano.Api.Internal.Eon.ShelleyToBabbageEra
-     Cardano.Api.Internal.Eon.ShelleyToMaryEra
-     Cardano.Api.Internal.Eras.Case
--    Cardano.Api.Internal.Eras.Core
-     Cardano.Api.Internal.Experimental.Eras
-     Cardano.Api.Internal.Experimental.Plutus.IndexedPlutusScriptWitness
-     Cardano.Api.Internal.Experimental.Plutus.Script
-@@ -229,7 +230,6 @@ library
-     Cardano.Api.Internal.IPC
-     Cardano.Api.Internal.IPC.Monad
-     Cardano.Api.Internal.IPC.Version
--    Cardano.Api.Internal.InMode
-     Cardano.Api.Internal.Json
-     Cardano.Api.Internal.Keys.Byron
-     Cardano.Api.Internal.Keys.Class
++  other-modules:
+     Cardano.Api.Internal.Orphans.Misc
+     Cardano.Api.Internal.Orphans.Serialisation
+     Cardano.Api.Internal.Utils
