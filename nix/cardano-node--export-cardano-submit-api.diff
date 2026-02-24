@@ -1,0 +1,13 @@
+diff --git a/cardano-submit-api/cardano-submit-api.cabal b/cardano-submit-api/cardano-submit-api.cabal
+index b37fee9469..d9871d6c8f 100644
+--- a/cardano-submit-api/cardano-submit-api.cabal
++++ b/cardano-submit-api/cardano-submit-api.cabal
+@@ -64,7 +64,7 @@ library
+ 
+   exposed-modules:      Cardano.TxSubmit
+ 
+-  other-modules:        Cardano.TxSubmit.CLI.Parsers
++                      , Cardano.TxSubmit.CLI.Parsers
+                       , Cardano.TxSubmit.CLI.Types
+                       , Cardano.TxSubmit.Config
+                       , Cardano.TxSubmit.Metrics
