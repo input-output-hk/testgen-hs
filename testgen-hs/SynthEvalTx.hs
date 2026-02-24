@@ -21,7 +21,8 @@ import qualified Cardano.Ledger.Api.Era
 import Cardano.Ledger.Api.Tx (BabbageEraTxBody, RedeemerReport, Tx)
 import Cardano.Ledger.Api.Tx.In (TxIn)
 import Cardano.Ledger.Api.Tx.Out
-  (TxOut)
+  ( TxOut,
+  )
 import Cardano.Ledger.Api.UTxO (UTxO (..))
 import Cardano.Ledger.BaseTypes (Network (..))
 import Cardano.Ledger.Coin (Coin (..))
