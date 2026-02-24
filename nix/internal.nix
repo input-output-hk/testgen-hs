@@ -42,7 +42,9 @@ in rec {
       x86_64-darwin = cardano-node-flake.packages.x86_64-darwin;
       aarch64-darwin = cardano-node-flake.packages.aarch64-darwin;
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 
   inherit (cardano-node-packages) cardano-node cardano-cli;
 
@@ -57,9 +59,8 @@ in rec {
           name = "cardano-ledger--${dep-tag}";
           owner = "IntersectMBO";
           repo = "cardano-ledger";
-          #rev = "a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1"; # the one for cardano-node 10.4.1, tag: cardano-ledger-core-1.17.0.0
-          rev = dep-tag; # the one for cardano-node 10.4.1
-          hash = "sha256-pD22f9VzNApynPhVYv0T7fsOZdbvYr1vlOxhKRhMSYk=";
+          rev = dep-tag;
+          hash = "sha256-RvnNYY76OhRuC/uP5Lr+HLEKWyMHCWxx+10HlPrH6mQ=";
         };
     in
       (import inputs.flake-compat {
@@ -74,7 +75,6 @@ in rec {
             ''}
             cp -r ${../testgen-hs} ./testgen-hs
             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
-            sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
 
             patch -p1 -i ${./cardano-node--apply-patches.diff}
             cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
@@ -88,6 +88,8 @@ in rec {
 
             patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
             sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
+
+            patch -p1 -i ${./cardano-node--export-cardano-submit-api.diff}
           '');
           inherit (unpatched) rev shortRev lastModified lastModifiedDate;
         };
@@ -101,7 +103,9 @@ in rec {
       aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
       x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 
   nix-bundle-exe = import inputs.nix-bundle-exe {inherit pkgs;};
 
@@ -174,5 +178,7 @@ in rec {
       aarch64-linux = linuxLike {};
       x86_64-windows = linuxLike {useZip = true;};
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 }

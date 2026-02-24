@@ -1,40 +1,45 @@
 diff --git a/cabal.project b/cabal.project
-index 35af620d1..ef6e74e44 100644
+index 2b1b2e8b5b..1ae15e2941 100644
 --- a/cabal.project
 +++ b/cabal.project
-@@ -65,6 +65,15 @@ allow-newer:
- -- Do NOT add more source-repository-package stanzas here unless they are strictly
- -- temporary! Please read the section in CONTRIBUTING about updating dependencies.
+@@ -64,6 +64,20 @@ package plutus-scripts-bench
+ allow-newer:
+   , katip:Win32
  
 +source-repository-package
 +  type: git
 +  location: https://github.com/IntersectMBO/cardano-ledger.git
-+  tag: a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1
++  tag: faa7a9dc347697b11d4da5b7818b1731e11aeeef
 +  subdir:
 +    libs/cardano-ledger-test
-+    libs/constrained-generators
-+  --sha256: 12a99hc2jqgcjipvsqpgsrjhxyzd2gyn4mgqkir0ld3ksmzvcgd4
++  --sha256: 0r7aqzx981sxzdqnq2874ddhmc8wzsxf93zv1dp18fpsirhwvya6
++
++source-repository-package
++  type: git
++  location: https://github.com/input-output-hk/constrained-generators.git
++  --sha256: sha256-HjRCWK+3uTZBPLkpxr7oDlZe2W5kf/5s32XzXPdi6Go=
++  tag: 45559e07fe1651ddd257f2a1215dfd65e30a963f
 +
  if impl (ghc >= 9.12)
    allow-newer:
-     -- https://github.com/phadej/vec/issues/118
+     -- https://github.com/kapralVV/Unique/issues/11
 diff --git a/cardano-node/cardano-node.cabal b/cardano-node/cardano-node.cabal
-index 5ff4ea573..2027d3714 100644
+index 2c523934fa..73309acf04 100644
 --- a/cardano-node/cardano-node.cabal
 +++ b/cardano-node/cardano-node.cabal
-@@ -160,6 +160,7 @@ library
-                       , cardano-ledger-conway
+@@ -152,6 +152,7 @@ library
                        , cardano-ledger-core
+                       , cardano-ledger-dijkstra
                        , cardano-ledger-shelley
 +                      , cardano-ledger-test == 9.9.9.9
                        , cardano-prelude
                        , cardano-protocol-tpraos >= 1.4
                        , cardano-slotting >= 0.2
 diff --git a/nix/haskell.nix b/nix/haskell.nix
-index 1bc557d65..9277e580f 100644
+index 5e84f31753..fb3d1e3292 100644
 --- a/nix/haskell.nix
 +++ b/nix/haskell.nix
-@@ -113,6 +113,14 @@ let
+@@ -122,6 +122,14 @@ let
        #
        modules =
          [

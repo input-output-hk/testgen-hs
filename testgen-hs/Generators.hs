@@ -3,10 +3,7 @@
 
 module Generators where
 
-import qualified Cardano.Api.Internal.Eon.ShelleyBasedEra as CAPI
-import qualified Cardano.Api.Internal.Eras.Core as CAPI
-import qualified Cardano.Api.Internal.InMode as CAPI
-import qualified Cardano.Api.Internal.Modes as CAPI
+import qualified Cardano.Api as CAPI
 import Cardano.Api.Internal.Orphans ()
 import qualified Cardano.Binary
 import qualified Cardano.Chain.Slotting as CCS
@@ -229,6 +226,7 @@ hfcEnvelopeShowInner = go
     go (OCCB.ApplyTxErrMary a) = (show . typeOf $ a, show a)
     go (OCCB.ApplyTxErrAlonzo a) = (show . typeOf $ a, show a)
     go (OCCB.ApplyTxErrBabbage a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrDijkstra a) = (show . typeOf $ a, show a)
     go (OCCB.ApplyTxErrConway a) = (show . typeOf $ a, show a)
     go (OCCB.ApplyTxErrWrongEra a) = (show . typeOf $ a, show a)
 

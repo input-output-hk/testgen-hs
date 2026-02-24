@@ -6,11 +6,9 @@ module Main where
 
 import CLI (GenSize (..), NumCases (..), Seed (..))
 import qualified CLI
+import qualified Cardano.Api as CAPI
 import Cardano.Binary (FromCBOR, decodeFull')
 import Cardano.Ledger.Api (ConwayEra, PParams)
-import qualified Cardano.Ledger.Binary.Decoding as Binary
-import qualified Cardano.Ledger.Core
-import qualified Cardano.Ledger.Core as Ledger
 import Cardano.Slotting.EpochInfo (EpochInfo, fixedEpochInfo)
 import Cardano.Slotting.Slot (EpochSize (..))
 import Cardano.Slotting.Time (SystemStart (..), mkSlotLength)
@@ -23,12 +21,11 @@ import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
-import Data.Foldable (foldl')
+import qualified Data.Foldable as Foldable
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -38,7 +35,6 @@ import Data.Time (NominalDiffTime)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Word (Word16, Word64)
 import qualified Deserialize as D
-import Encoder (serializeDecoderError)
 import Evaluation (eval'Conway, writeJson)
 import GHC.Generics (Generic)
 import qualified Generators as G
@@ -161,7 +157,7 @@ writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
   putsLock <- newMVar ()
   let chunks =
         snd $
-          foldl'
+          Foldable.foldl'
             ( \(prevRng, acc) chunk ->
                 let (rngL, rngR) = System.Random.split prevRng
                  in (rngL, (chunk, rngR) : acc)
@@ -300,12 +296,12 @@ runEvaluateStream = do
         Right (evalPayload :: EvalPayload) -> do
           let decodedValues = do
                 txBytes <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ B16.decode (T.encodeUtf8 (tx evalPayload))
-                decodedTx <-
-                  decodeCborWith
-                    "Transaction"
-                    (Left . (\e -> PayloadResponse (Just (serializeDecoderError (BS.length txBytes) e)) Nothing))
-                    (Binary.decCBOR @(Cardano.Ledger.Core.Tx ConwayEra))
-                    txBytes
+                decodedTxApi <-
+                  first
+                    (\e -> PayloadResponse (Just (T.pack (show e))) Nothing)
+                    (CAPI.deserialiseFromCBOR (CAPI.AsTx CAPI.AsConwayEra) txBytes)
+                let decodedTx = case decodedTxApi of
+                      CAPI.ShelleyTx _ ledgerTx -> ledgerTx
                 utxos <- first (\e -> PayloadResponse (Just (T.pack e)) Nothing) $ decodeFromHex (utxos evalPayload)
                 return (decodedTx, utxos)
 
@@ -329,21 +325,3 @@ decodeFromHex hexText = do
   cborBytes <- first show $ B16.decode (T.encodeUtf8 hexText)
   -- 2. Decode from CBOR.
   first show $ decodeFull' cborBytes
-
--- Run a CBOR decoder for data in Conway era
-decodeCborWith ::
-  -- | Label for error reporting
-  Text ->
-  -- | Error handler
-  (Binary.DecoderError -> Either e a) ->
-  -- | CBOR decoder
-  (forall s. Binary.Decoder s a) ->
-  -- | Input bytes
-  ByteString ->
-  Either e a
-decodeCborWith lbl handleErr decoder bytes =
-  case Binary.decodeFullDecoder version lbl decoder (BL.fromStrict bytes) of
-    Left cborErr -> handleErr cborErr
-    Right val -> Right val
-  where
-    version = Ledger.eraProtVerLow @ConwayEra

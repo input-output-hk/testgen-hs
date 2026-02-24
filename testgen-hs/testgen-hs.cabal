@@ -5,7 +5,7 @@ synopsis:
   CBOR test case generator and deserializer for cross-checking other implementations
 
 -- Version tracks cardano-node, adding a patch segment:
-version:       10.4.1.2
+version:       10.6.2.0
 
 executable testgen-hs
   main-is:            Main.hs
@@ -31,7 +31,6 @@ executable testgen-hs
     , cardano-submit-api
     , cborg
     , containers
-    , data-default
     , file-embed
     , generic-random
     , microlens

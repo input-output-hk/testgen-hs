@@ -21,7 +21,7 @@ import qualified Cardano.Ledger.Api.Era
 import Cardano.Ledger.Api.Tx (BabbageEraTxBody, RedeemerReport, Tx)
 import Cardano.Ledger.Api.Tx.In (TxIn)
 import Cardano.Ledger.Api.Tx.Out
-  ( TxOut (..),
+  ( TxOut,
   )
 import Cardano.Ledger.Api.UTxO (UTxO (..))
 import Cardano.Ledger.BaseTypes (Network (..))
@@ -34,7 +34,7 @@ import Cardano.Ledger.Credential
 import Cardano.Ledger.Keys (KeyHash (..), KeyRole (..))
 import Cardano.Ledger.Val (inject)
 import Cardano.Slotting.EpochInfo (EpochInfo, fixedEpochInfo)
-import Cardano.Slotting.Slot (EpochSize (..), SlotNo (..))
+import Cardano.Slotting.Slot (EpochSize (..))
 import Cardano.Slotting.Time (SystemStart (..), mkSlotLength)
 import Data.Aeson
   ( eitherDecodeStrict',
@@ -42,7 +42,6 @@ import Data.Aeson
 import qualified Data.Aeson as J
 import qualified Data.Aeson.Encoding as AesonEncoding
 import qualified Data.ByteString as BS
-import qualified Data.Default
 import Data.FileEmbed (embedFile)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -53,7 +52,6 @@ import Encoder (ogmiosSuccess)
 import Lens.Micro ((^.))
 import qualified Test.Cardano.Ledger.Generic.GenState
 import qualified Test.Cardano.Ledger.Generic.Proof as Proof
-import qualified Test.Cardano.Ledger.Generic.TxGen
 import qualified Test.QuickCheck as QC
 
 -- | Drops a Plutus script into both lookup maps.
@@ -75,12 +73,8 @@ genTxUTxO ::
       Cardano.Ledger.Api.UTxO.UTxO Cardano.Ledger.Api.Era.ConwayEra
     )
 genTxUTxO = do
-  slot <- SlotNo <$> QC.choose (0, 10_000)
-  ((utxo, tx), _) <- Test.Cardano.Ledger.Generic.GenState.runGenRS proof Data.Default.def (Test.Cardano.Ledger.Generic.TxGen.genAlonzoTx proof slot)
-  pure (tx, utxo)
-  where
-    proof :: Proof.Proof Cardano.Ledger.Api.Era.ConwayEra
-    proof = Proof.Conway
+  tx <- QC.arbitrary
+  pure (tx, stubUTxO tx)
 
 eval'Conway ::
   (Cardano.Ledger.Core.Tx (Cardano.Ledger.Api.Era.ConwayEra)) ->
@@ -122,7 +116,7 @@ stubUTxO tx =
     [(i, dummyOut) | i <- Set.toList (allTxIns tx)]
   where
     dummyOut :: TxOut era
-    dummyOut = mkBasicTxOut dummyAddr (inject (Coin 2_000_000))
+    dummyOut = Cardano.Ledger.Core.mkBasicTxOut dummyAddr (inject (Coin 2_000_000))
 
     dummyAddr :: Addr
     dummyAddr = Addr Testnet (KeyHashObj dummyKeyHash) StakeRefNull
