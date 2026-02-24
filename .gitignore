@@ -4,5 +4,5 @@ result
 # Haskell / Cabal
 dist-newstyle/
 /cabal.project
-/cabal.project.local
+/cabal.project.*
 .ghc.environment.*

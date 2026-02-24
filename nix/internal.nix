@@ -60,56 +60,49 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
     src = cardano-api-src;
     patches = [./cardano-api--expose-internal.diff];
   };
-  patched-cardano-node-src = pkgs.runCommandNoCC "cardano-node-src-patched" {} ''
-    cp -r ${cardano-node-src} $out
-    chmod -R +w $out
-    cd $out
-    ${lib.optionalString (targetSystem == "aarch64-linux") ''
-      echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
-      sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
-    ''}
-    cp -r ${../testgen-hs} ./testgen-hs
-    sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+  patched-cardano-node-src = {withOurCode ? true}:
+    pkgs.runCommandNoCC "cardano-node-src-patched" {} ''
+      cp -r ${cardano-node-src} $out
+      chmod -R +w $out
+      cd $out
+      ${lib.optionalString (targetSystem == "aarch64-linux") ''
+        echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+        sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+      ''}
+      ${
+        if withOurCode
+        then ''
+          cp -r ${../testgen-hs} ./testgen-hs
+        ''
+        else ''
+          mkdir -p ./testgen-hs
+        ''
+      }
+      sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
 
-    patch -p1 -i ${./cardano-node--apply-patches.diff}
-    cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
-    cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
-    cp  ${
-      if targetSystem == "x86_64-windows"
-      then ./cardano-ledger-test--windows-fix.diff
-      else pkgs.emptyFile
-    } nix/cardano-ledger-test--windows-fix.diff
-    cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
+      patch -p1 -i ${./cardano-node--apply-patches.diff}
+      cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
+      cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
+      cp  ${
+        if targetSystem == "x86_64-windows"
+        then ./cardano-ledger-test--windows-fix.diff
+        else pkgs.emptyFile
+      } nix/cardano-ledger-test--windows-fix.diff
+      cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
 
-    patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
-    sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
+      patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
+      sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
 
-    patch -p1 -i ${./cardano-node--export-cardano-submit-api.diff}
-  '';
+      patch -p1 -i ${./cardano-node--export-cardano-submit-api.diff}
+    '';
   patched-cardano-node-flake' =
     (import inputs.flake-compat {
       src = {
-        outPath = toString patched-cardano-node-src;
+        outPath = toString (patched-cardano-node-src {withOurCode = true;});
         inherit (inputs.cardano-node) rev shortRev lastModified lastModifiedDate;
       };
     })
     .defaultNix;
-  cardano-node-package-names = [
-    "cardano-node"
-    "cardano-node-capi"
-    "cardano-node-chairman"
-    "cardano-submit-api"
-    "cardano-testnet"
-    "cardano-tracer"
-    "bench/cardano-profile"
-    "bench/cardano-topology"
-    "bench/locli"
-    "bench/plutus-scripts-bench"
-    "bench/tx-generator"
-    "trace-dispatcher"
-    "trace-resources"
-    "trace-forward"
-  ];
 in rec {
   defaultPackage = testgen-hs;
   cardano-node-flake = cardano-node-flake';
@@ -127,46 +120,27 @@ in rec {
 
   devShell = let
     cardano-node-devshell = cardano-node-flake.devShells.${buildSystem}.default;
-    cabal-project-packages-old = lib.concatStringsSep "\n" [
-      "packages:"
-      "  cardano-node"
-      "  cardano-node-capi"
-      "  cardano-node-chairman"
-      "  cardano-submit-api"
-      "  cardano-testnet"
-      "  cardano-tracer"
-      "  bench/cardano-profile"
-      "  bench/cardano-topology"
-      "  bench/locli"
-      "  bench/plutus-scripts-bench"
-      "  bench/tx-generator"
-      "  trace-dispatcher"
-      "  trace-resources"
-      "  trace-forward"
-      ""
-    ];
-    cabal-project-packages-new = lib.concatStringsSep "\n" (
-      ["packages:"]
-      ++ map (package: "  ${patched-cardano-node-src}/${package}") cardano-node-package-names
-      ++ [
-        "  ${patched-cardano-api-src}"
-        "  ${patched-cardano-ledger-src}/libs/cardano-ledger-core"
-        "  ${patched-cardano-ledger-src}/libs/cardano-ledger-test"
-        "  ${patched-cardano-ledger-src}/libs/constrained-generators"
-        "  @REPO_ROOT@/testgen-hs"
-        ""
-      ]
-    );
     cabal-project-base = cardano-node-flake.project.${buildSystem}.args.cabalProject;
-    cabal-project =
-      lib.replaceStrings [cabal-project-packages-old] [cabal-project-packages-new] cabal-project-base;
-    cabal-project-template = pkgs.writeText "cabal.project" cabal-project;
+    cabal-project-template = pkgs.writeText "cabal.project" cabal-project-base;
+    cabal-project-extra-packages = [
+      "${patched-cardano-api-src}"
+      "${patched-cardano-ledger-src}/libs/cardano-ledger-core"
+      "${patched-cardano-ledger-src}/libs/cardano-ledger-test"
+      "${patched-cardano-ledger-src}/libs/constrained-generators"
+      "@REPO_ROOT@/testgen-hs"
+    ];
+    cabal-project-extra-packages-json = builtins.toJSON cabal-project-extra-packages;
+    cabal-project-rewrite-script = pkgs.substituteAll {
+      src = ./rewrite_cabal_project.py;
+      cabal_project_template = toString cabal-project-template;
+      patched_node_src = toString (patched-cardano-node-src {withOurCode = false;});
+      extra_packages_json = cabal-project-extra-packages-json;
+    };
   in
     pkgs.mkShell {
       inputsFrom = [cardano-node-devshell];
       shellHook = ''
-        repo_root=$(pwd)
-        sed "s|@REPO_ROOT@|$repo_root|g" ${cabal-project-template} > cabal.project
+        ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
       '';
     };
 
