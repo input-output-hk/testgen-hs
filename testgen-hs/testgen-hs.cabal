@@ -31,7 +31,6 @@ executable testgen-hs
     , cardano-submit-api
     , cborg
     , containers
-    , data-default
     , file-embed
     , generic-random
     , microlens

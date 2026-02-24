@@ -147,6 +147,7 @@ serializeLanguage = \case
   Ledger.PlutusV1 -> "plutus:v1"
   Ledger.PlutusV2 -> "plutus:v2"
   Ledger.PlutusV3 -> "plutus:v3"
+  Ledger.PlutusV4 -> "plutus:v4"
 
 -- | Ogmios "budget" object from 'ExUnits'.
 serializeExUnits :: Al.ExUnits -> Encoding
@@ -258,6 +259,8 @@ serializeContextError err = J.text $ case err of
     "Reference scripts not supported in plutus:v1. Use plutus:v2 or higher."
   C.BabbageContextError (Ba.ReferenceInputsNotSupported {}) ->
     "Reference inputs not supported in plutus:v1. Use plutus:v2 or higher."
+  C.ReferenceInputsNotDisjointFromInputs {} ->
+    "Reference inputs overlap with regular inputs. Ensure both sets are disjoint."
   C.BabbageContextError (Ba.RedeemerPointerPointsToNothing purpose) ->
     let (title, ptr) =
           case purpose of
