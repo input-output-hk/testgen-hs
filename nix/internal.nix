@@ -42,7 +42,9 @@ in rec {
       x86_64-darwin = cardano-node-flake.packages.x86_64-darwin;
       aarch64-darwin = cardano-node-flake.packages.aarch64-darwin;
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 
   inherit (cardano-node-packages) cardano-node cardano-cli;
 
@@ -101,7 +103,9 @@ in rec {
       aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
       x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 
   nix-bundle-exe = import inputs.nix-bundle-exe {inherit pkgs;};
 
@@ -174,5 +178,7 @@ in rec {
       aarch64-linux = linuxLike {};
       x86_64-windows = linuxLike {useZip = true;};
     }
-    .${targetSystem};
+    .${
+      targetSystem
+    };
 }
