@@ -2,14 +2,26 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-    flake-compat.url = "github:input-output-hk/flake-compat";
-    flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.4.1";
-    cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    nix-bundle-exe.url = "github:3noch/nix-bundle-exe";
-    nix-bundle-exe.flake = false;
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    flake-compat = {
+      url = "github:input-output-hk/flake-compat";
+      flake = false;
+    };
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    cardano-node = {
+      url = "github:IntersectMBO/cardano-node/10.4.1";
+      flake = false; # otherwise, +2k dependencies we don’t really use
+    };
+    nix-bundle-exe = {
+      url = "github:3noch/nix-bundle-exe";
+      flake = false;
+    };
   };
 
   outputs = inputs: let
