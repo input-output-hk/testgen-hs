@@ -50,7 +50,10 @@
             alejandra.enable = true; # Nix
             ormolu.enable = true; # Haskell
             cabal-fmt.enable = true;
+            prettier.enable = true; # Markdown, JSON, …
             shfmt.enable = true;
+            ruff-check.enable = true; # Python
+            ruff-format.enable = true; # Python
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
           };
         };
