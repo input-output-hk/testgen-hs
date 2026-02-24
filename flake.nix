@@ -29,16 +29,20 @@
         );
 
       systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
-      perSystem = {system, ...}: {
-        packages = let
-          internal = inputs.self.internal.${system};
-        in
+      perSystem = {system, ...}: let
+        internal = inputs.self.internal.${system};
+      in {
+        packages =
           {
             default = internal.defaultPackage;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
             default-x86_64-windows = inputs.self.internal.x86_64-windows.defaultPackage;
           });
+
+        devShells = {
+          default = internal.devShell;
+        };
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
@@ -57,7 +61,7 @@
           testgen-hs = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
             targetSystem: inputs.self.internal.${targetSystem}.hydraPackage
           );
-          inherit (inputs.self) checks;
+          inherit (inputs.self) checks devShells;
         };
       in
         allJobs

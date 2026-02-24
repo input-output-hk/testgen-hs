@@ -10,30 +10,109 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
     else "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
-in rec {
-  defaultPackage = testgen-hs;
-
-  cardano-node-flake = let
+  cardano-node-src = let
     unpatched = inputs.cardano-node;
   in
+    if targetSystem != "aarch64-linux"
+    then unpatched
+    else
+      pkgs.runCommand "source" {} ''
+        cp -r ${unpatched} $out
+        chmod -R +w $out
+        cd $out
+        ${lib.optionalString (targetSystem == "aarch64-linux") ''
+          echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+          sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+        ''}
+      '';
+  cardano-node-src-for-flake =
+    if targetSystem != "aarch64-linux"
+    then cardano-node-src
+    else {
+      outPath = toString cardano-node-src;
+      inherit (inputs.cardano-node) rev shortRev lastModified lastModifiedDate;
+    };
+  cardano-node-flake' = (import inputs.flake-compat {src = cardano-node-src-for-flake;}).defaultNix;
+  cardano-ledger-src = let
+    dep-id = cardano-node-flake'.project.${buildSystem}.hsPkgs.cardano-ledger-core.identifier;
+    dep-tag = "${dep-id.name}-${dep-id.version}";
+  in
+    pkgs.fetchFromGitHub {
+      name = "cardano-ledger--${dep-tag}";
+      owner = "IntersectMBO";
+      repo = "cardano-ledger";
+      #rev = "a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1"; # the one for cardano-node 10.4.1, tag: cardano-ledger-core-1.17.0.0
+      rev = dep-tag; # the one for cardano-node 10.4.1
+      hash = "sha256-pD22f9VzNApynPhVYv0T7fsOZdbvYr1vlOxhKRhMSYk=";
+    };
+  patched-cardano-ledger-src = pkgs.runCommandNoCC "cardano-ledger-src-patched" {} ''
+    cp -r ${cardano-ledger-src} $out
+    chmod -R +w $out
+    patch -p1 -d $out/libs/cardano-ledger-core -i ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff}
+    patch -p1 -d $out/libs/cardano-ledger-test -i ${./cardano-ledger-test--expose-helpers.diff}
+    ${lib.optionalString (targetSystem == "x86_64-windows") ''
+      patch -p1 -d $out/libs/cardano-ledger-test -i ${./cardano-ledger-test--windows-fix.diff}
+    ''}
+  '';
+  cardano-api-src = cardano-node-flake'.project.${buildSystem}.hsPkgs.cardano-api.src;
+  patched-cardano-api-src = pkgs.applyPatches {
+    name = "cardano-api-src-patched";
+    src = cardano-api-src;
+    patches = [./cardano-api--expose-internal.diff];
+  };
+  patched-cardano-node-src = pkgs.runCommandNoCC "cardano-node-src-patched" {} ''
+    cp -r ${cardano-node-src} $out
+    chmod -R +w $out
+    cd $out
+    ${lib.optionalString (targetSystem == "aarch64-linux") ''
+      echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+      sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+    ''}
+    cp -r ${../testgen-hs} ./testgen-hs
+    sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+
+    patch -p1 -i ${./cardano-node--apply-patches.diff}
+    cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
+    cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
+    cp  ${
+      if targetSystem == "x86_64-windows"
+      then ./cardano-ledger-test--windows-fix.diff
+      else pkgs.emptyFile
+    } nix/cardano-ledger-test--windows-fix.diff
+    cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
+
+    patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
+    sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
+
+    patch -p1 -i ${./cardano-node--export-cardano-submit-api.diff}
+  '';
+  patched-cardano-node-flake' =
     (import inputs.flake-compat {
-      src =
-        if targetSystem != "aarch64-linux"
-        then unpatched
-        else {
-          outPath = toString (pkgs.runCommand "source" {} ''
-            cp -r ${unpatched} $out
-            chmod -R +w $out
-            cd $out
-            ${lib.optionalString (targetSystem == "aarch64-linux") ''
-              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
-              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
-            ''}
-          '');
-          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-        };
+      src = {
+        outPath = toString patched-cardano-node-src;
+        inherit (inputs.cardano-node) rev shortRev lastModified lastModifiedDate;
+      };
     })
     .defaultNix;
+  cardano-node-package-names = [
+    "cardano-node"
+    "cardano-node-capi"
+    "cardano-node-chairman"
+    "cardano-submit-api"
+    "cardano-testnet"
+    "cardano-tracer"
+    "bench/cardano-profile"
+    "bench/cardano-topology"
+    "bench/locli"
+    "bench/plutus-scripts-bench"
+    "bench/tx-generator"
+    "trace-dispatcher"
+    "trace-resources"
+    "trace-forward"
+  ];
+in rec {
+  defaultPackage = testgen-hs;
+  cardano-node-flake = cardano-node-flake';
 
   cardano-node-packages =
     {
@@ -46,54 +125,53 @@ in rec {
 
   inherit (cardano-node-packages) cardano-node cardano-cli;
 
+  devShell = let
+    cardano-node-devshell = cardano-node-flake.devShells.${buildSystem}.default;
+    cabal-project-packages-old = lib.concatStringsSep "\n" [
+      "packages:"
+      "  cardano-node"
+      "  cardano-node-capi"
+      "  cardano-node-chairman"
+      "  cardano-submit-api"
+      "  cardano-testnet"
+      "  cardano-tracer"
+      "  bench/cardano-profile"
+      "  bench/cardano-topology"
+      "  bench/locli"
+      "  bench/plutus-scripts-bench"
+      "  bench/tx-generator"
+      "  trace-dispatcher"
+      "  trace-resources"
+      "  trace-forward"
+      ""
+    ];
+    cabal-project-packages-new = lib.concatStringsSep "\n" (
+      ["packages:"]
+      ++ map (package: "  ${patched-cardano-node-src}/${package}") cardano-node-package-names
+      ++ [
+        "  ${patched-cardano-api-src}"
+        "  ${patched-cardano-ledger-src}/libs/cardano-ledger-core"
+        "  ${patched-cardano-ledger-src}/libs/cardano-ledger-test"
+        "  ${patched-cardano-ledger-src}/libs/constrained-generators"
+        "  @REPO_ROOT@/testgen-hs"
+        ""
+      ]
+    );
+    cabal-project-base = cardano-node-flake.project.${buildSystem}.args.cabalProject;
+    cabal-project =
+      lib.replaceStrings [cabal-project-packages-old] [cabal-project-packages-new] cabal-project-base;
+    cabal-project-template = pkgs.writeText "cabal.project" cabal-project;
+  in
+    pkgs.mkShell {
+      inputsFrom = [cardano-node-devshell];
+      shellHook = ''
+        repo_root=$(pwd)
+        sed "s|@REPO_ROOT@|$repo_root|g" ${cabal-project-template} > cabal.project
+      '';
+    };
+
   testgen-hs = let
-    patched-flake = let
-      unpatched = inputs.cardano-node;
-      cardano-ledger-src = let
-        dep-id = cardano-node-flake.project.${buildSystem}.hsPkgs.cardano-ledger-core.identifier;
-        dep-tag = "${dep-id.name}-${dep-id.version}";
-      in
-        pkgs.fetchFromGitHub {
-          name = "cardano-ledger--${dep-tag}";
-          owner = "IntersectMBO";
-          repo = "cardano-ledger";
-          #rev = "a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1"; # the one for cardano-node 10.4.1, tag: cardano-ledger-core-1.17.0.0
-          rev = dep-tag; # the one for cardano-node 10.4.1
-          hash = "sha256-pD22f9VzNApynPhVYv0T7fsOZdbvYr1vlOxhKRhMSYk=";
-        };
-    in
-      (import inputs.flake-compat {
-        src = {
-          outPath = toString (pkgs.runCommandNoCC "source" {} ''
-            cp -r ${unpatched} $out
-            chmod -R +w $out
-            cd $out
-            ${lib.optionalString (targetSystem == "aarch64-linux") ''
-              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
-              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
-            ''}
-            cp -r ${../testgen-hs} ./testgen-hs
-            sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
-
-            patch -p1 -i ${./cardano-node--apply-patches.diff}
-            cp  ${./cardano-ledger-core--Arbitrary-PoolMetadata.diff} nix/cardano-ledger-core--Arbitrary-PoolMetadata.diff
-            cp  ${./cardano-ledger-test--expose-helpers.diff} nix/cardano-ledger-test--expose-helpers.diff
-            cp  ${
-              if targetSystem == "x86_64-windows"
-              then ./cardano-ledger-test--windows-fix.diff
-              else pkgs.emptyFile
-            } nix/cardano-ledger-test--windows-fix.diff
-            cp  ${./cardano-api--expose-internal.diff} nix/cardano-api--expose-internal.diff
-
-            patch -p1 -i ${./cardano-node--expose-cardano-ledger-test.diff}
-            sed -r 's,CARDANO_LEDGER_SOURCE,${cardano-ledger-src},g' -i nix/haskell.nix
-
-            patch -p1 -i ${./cardano-node--export-cardano-submit-api.diff}
-          '');
-          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-        };
-      })
-      .defaultNix;
+    patched-flake = patched-cardano-node-flake';
   in
     {
       x86_64-linux = patched-flake.hydraJobs.x86_64-linux.musl.testgen-hs;
