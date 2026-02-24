@@ -25,7 +25,7 @@ import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
-import Data.Foldable (foldl')
+import qualified Data.Foldable as Foldable
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -157,7 +157,7 @@ writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
   putsLock <- newMVar ()
   let chunks =
         snd $
-          foldl'
+          Foldable.foldl'
             ( \(prevRng, acc) chunk ->
                 let (rngL, rngR) = System.Random.split prevRng
                  in (rngL, (chunk, rngR) : acc)
