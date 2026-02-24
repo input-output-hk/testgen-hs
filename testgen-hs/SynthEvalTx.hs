@@ -116,7 +116,7 @@ stubUTxO tx =
     [(i, dummyOut) | i <- Set.toList (allTxIns tx)]
   where
     dummyOut :: TxOut era
-    dummyOut = mkBasicTxOut dummyAddr (inject (Coin 2_000_000))
+    dummyOut = Cardano.Ledger.Core.mkBasicTxOut dummyAddr (inject (Coin 2_000_000))
 
     dummyAddr :: Addr
     dummyAddr = Addr Testnet (KeyHashObj dummyKeyHash) StakeRefNull
