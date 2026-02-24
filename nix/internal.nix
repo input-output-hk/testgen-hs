@@ -41,8 +41,7 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
       name = "cardano-ledger--${dep-tag}";
       owner = "IntersectMBO";
       repo = "cardano-ledger";
-      #rev = "a9e78ae63cf8870f0ce6ce76bd7029b82ddb47e1"; # the one for cardano-node 10.4.1, tag: cardano-ledger-core-1.17.0.0
-      rev = dep-tag; # the one for cardano-node 10.4.1
+      rev = dep-tag;
       hash = "sha256-pD22f9VzNApynPhVYv0T7fsOZdbvYr1vlOxhKRhMSYk=";
     };
   patched-cardano-ledger-src = pkgs.runCommandNoCC "cardano-ledger-src-patched" {} ''
