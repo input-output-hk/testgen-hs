@@ -29,12 +29,7 @@
         );
 
       systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
-      perSystem = {
-        config,
-        system,
-        pkgs,
-        ...
-      }: {
+      perSystem = {system, ...}: {
         packages = let
           internal = inputs.self.internal.${system};
         in
@@ -47,11 +42,13 @@
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
-          programs.alejandra.enable = true; # Nix
-          programs.ormolu.enable = true; # Haskell
-          programs.cabal-fmt.enable = true;
-          programs.shfmt.enable = true;
-          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+          programs = {
+            alejandra.enable = true; # Nix
+            ormolu.enable = true; # Haskell
+            cabal-fmt.enable = true;
+            shfmt.enable = true;
+            yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+          };
         };
       };
 
