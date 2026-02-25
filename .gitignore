@@ -1,2 +1,14 @@
 # Nix
 result
+result-*
+
+# Haskell / Cabal
+dist-newstyle/
+/cabal.project
+/cabal.project.*
+/.cabal/
+.ghc.environment.*
+
+# direnv
+.direnv/
+.envrc.local

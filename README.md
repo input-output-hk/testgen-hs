@@ -50,6 +50,7 @@ Available commands:
 ```
 ❯ testgen-hs generate -g1 -n1 ApplyTxErr_Conway
 ```
+
 ```json
 {
   "seed": 1731690796,
@@ -266,11 +267,11 @@ And then easily reproduce it by providing the same seed that was found:
 
 ```
 ❯ ( echo 8182068182028200a0
-    echo 81820681820481581cc0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456 
+    echo 81820681820481581cc0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456
   ) | testgen-hs deserialize-stream
 ```
 
-``` json
+```json
 {"cbor":"8182068182028200a0","haskellRepr":"ApplyTxError (ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList [])) :| [])","json":{"contents":{"contents":{"contents":{"era":"ShelleyBasedEraConway","error":["ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"],"kind":"ShelleyTxValidationError"},"tag":"TxValidationErrorInCardanoMode"},"tag":"TxCmdTxSubmitValidationError"},"tag":"TxSubmitFail"},"typeTag":"ApplyTxError (ConwayEra StandardCrypto)"}
 {"cbor":"81820681820481581cc0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456","haskellRepr":"ApplyTxError (ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"c0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456\"} :| []) :| [])","json":{"contents":{"contents":{"contents":{"era":"ShelleyBasedEraConway","error":["ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"c0231342a5c66b25d652a7116559d02cbe9515ef890fd698de38d456\"} :| [])"],"kind":"ShelleyTxValidationError"},"tag":"TxValidationErrorInCardanoMode"},"tag":"TxCmdTxSubmitValidationError"},"tag":"TxSubmitFail"},"typeTag":"ApplyTxError (ConwayEra StandardCrypto)"}
 ```

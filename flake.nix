@@ -2,14 +2,26 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-    flake-compat.url = "github:input-output-hk/flake-compat";
-    flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.6.2";
-    cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    nix-bundle-exe.url = "github:3noch/nix-bundle-exe";
-    nix-bundle-exe.flake = false;
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    flake-compat = {
+      url = "github:input-output-hk/flake-compat";
+      flake = false;
+    };
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    cardano-node = {
+      url = "github:IntersectMBO/cardano-node/10.6.2";
+      flake = false; # otherwise, +2k dependencies we don’t really use
+    };
+    nix-bundle-exe = {
+      url = "github:3noch/nix-bundle-exe";
+      flake = false;
+    };
   };
 
   outputs = inputs: let
@@ -18,6 +30,7 @@
     inputs.flake-parts.lib.mkFlake {inherit inputs;} ({config, ...}: {
       imports = [
         inputs.treefmt-nix.flakeModule
+        inputs.devshell.flakeModule
       ];
 
       flake.internal =
@@ -29,15 +42,10 @@
         );
 
       systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
-      perSystem = {
-        config,
-        system,
-        pkgs,
-        ...
-      }: {
-        packages = let
-          internal = inputs.self.internal.${system};
-        in
+      perSystem = {system, ...}: let
+        internal = inputs.self.internal.${system};
+      in {
+        packages =
           {
             default = internal.defaultPackage;
           }
@@ -45,13 +53,20 @@
             default-x86_64-windows = inputs.self.internal.x86_64-windows.defaultPackage;
           });
 
+        devshells.default = internal.devShell.new;
+
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
-          programs.alejandra.enable = true; # Nix
-          programs.ormolu.enable = true; # Haskell
-          programs.cabal-fmt.enable = true;
-          programs.shfmt.enable = true;
-          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+          programs = {
+            alejandra.enable = true; # Nix
+            ormolu.enable = true; # Haskell
+            cabal-fmt.enable = true;
+            prettier.enable = true; # Markdown, JSON, …
+            shfmt.enable = true;
+            ruff-check.enable = true; # Python
+            ruff-format.enable = true; # Python
+            yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+          };
         };
       };
 
@@ -60,7 +75,7 @@
           testgen-hs = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
             targetSystem: inputs.self.internal.${targetSystem}.hydraPackage
           );
-          inherit (inputs.self) checks;
+          inherit (inputs.self) checks devShells;
         };
       in
         allJobs
