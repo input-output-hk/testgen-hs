@@ -1,5 +1,6 @@
 # Nix
 result
+result-*
 
 # Haskell / Cabal
 dist-newstyle/

@@ -30,6 +30,7 @@
     inputs.flake-parts.lib.mkFlake {inherit inputs;} ({config, ...}: {
       imports = [
         inputs.treefmt-nix.flakeModule
+        inputs.devshell.flakeModule
       ];
 
       flake.internal =
@@ -52,9 +53,8 @@
             default-x86_64-windows = inputs.self.internal.x86_64-windows.defaultPackage;
           });
 
-        devShells = {
-          default = internal.devShell;
-        };
+        devShells.old = internal.devShell.old;
+        devshells.new = internal.devShell.new;
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";

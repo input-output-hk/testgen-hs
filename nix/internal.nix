@@ -119,6 +119,35 @@ in rec {
 
   devShell = let
     cardano-node-devshell = cardano-node-flake.devShells.${buildSystem}.default;
+    cardano-node-inputs = lib.filter lib.isDerivation (
+      (cardano-node-devshell.buildInputs or [])
+      ++ (cardano-node-devshell.nativeBuildInputs or [])
+      ++ (cardano-node-devshell.propagatedBuildInputs or [])
+      ++ (cardano-node-devshell.propagatedNativeBuildInputs or [])
+    );
+    cardano-node-env = pkgs.buildEnv {
+      name = "cardano-node-devshell-env";
+      paths = cardano-node-inputs;
+      ignoreCollisions = true;
+    };
+    cardano-node-ghc-libdir = cardano-node-devshell.NIX_GHC_LIBDIR or "";
+
+    # numtide/devshell does not run stdenv setup hooks, so env vars that
+    # mkShell would set (e.g. PKG_CONFIG_PATH) are missing.
+    # PKG_CONFIG_PATH is critical: without it the cabal solver cannot
+    # verify pkgconfig-depends and dependency resolution fails.
+    # We extract it by running the same stdenv setup with the same inputs.
+    devshell-pkg-config-path =
+      pkgs.runCommand "devshell-pkg-config-path" {
+        inherit (cardano-node-devshell) buildInputs nativeBuildInputs;
+        propagatedBuildInputs = cardano-node-devshell.propagatedBuildInputs or [];
+        propagatedNativeBuildInputs = cardano-node-devshell.propagatedNativeBuildInputs or [];
+      } ''
+        source $stdenv/setup 2>/dev/null || true
+        mkdir -p $out
+        echo -n "''${PKG_CONFIG_PATH:-}" > $out/PKG_CONFIG_PATH
+      '';
+
     cabal-project-base = cardano-node-flake.project.${buildSystem}.args.cabalProject;
     cabal-project-template = pkgs.writeText "cabal.project" cabal-project-base;
     cabal-project-extra-packages = [
@@ -135,13 +164,48 @@ in rec {
       patched_node_src = toString (patched-cardano-node-src {withOurCode = false;});
       extra_packages_json = cabal-project-extra-packages-json;
     };
-  in
-    pkgs.mkShell {
+  in {
+    old = pkgs.mkShell {
       inputsFrom = [cardano-node-devshell];
       shellHook = ''
         ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
       '';
     };
+    new = {
+      pkgs,
+      config,
+      ...
+    }: {
+      name = "testgen-hs-devshell";
+      env =
+        lib.optional (cardano-node-ghc-libdir != "") {
+          name = "NIX_GHC_LIBDIR";
+          value = cardano-node-ghc-libdir;
+        }
+        ++ [
+          {
+            name = "PKG_CONFIG_PATH";
+            eval = "$(cat ${devshell-pkg-config-path}/PKG_CONFIG_PATH)\${PKG_CONFIG_PATH:+:\$PKG_CONFIG_PATH}";
+          }
+        ];
+      devshell = {
+        packages = [cardano-node-env];
+        startup.rewrite-cabal-project.text = ''
+          ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
+        '';
+        motd = ''
+
+          {202}🔨 Welcome to ${config.name}{reset}
+          $(menu)
+
+          You can now run:
+            · {bold}cabal update{reset}
+            · {bold}cabal build testgen-hs{reset}
+            · or even {bold}haskell-language-server{reset} for LSP
+        '';
+      };
+    };
+  };
 
   testgen-hs = let
     patched-flake = patched-cardano-node-flake';
