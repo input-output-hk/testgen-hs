@@ -15,7 +15,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cardano-node = {
-      url = "github:IntersectMBO/cardano-node/10.4.1";
+      url = "github:IntersectMBO/cardano-node/10.6.2";
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     nix-bundle-exe = {
