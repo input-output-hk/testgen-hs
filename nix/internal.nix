@@ -132,6 +132,11 @@ in rec {
     };
     cardano-node-ghc-libdir = cardano-node-devshell.NIX_GHC_LIBDIR or "";
 
+    # Extract an individual package from the cardano-node devshell inputs
+    # so we can expose it as a devshell command with its own menu entry.
+    findInput = pred: label:
+      lib.findFirst pred (throw "devshell input '${label}' not found") cardano-node-inputs;
+
     # numtide/devshell does not run stdenv setup hooks, so env vars that
     # mkShell would set (e.g. PKG_CONFIG_PATH) are missing.
     # PKG_CONFIG_PATH is critical: without it the cabal solver cannot
@@ -188,6 +193,23 @@ in rec {
             eval = "$(cat ${devshell-pkg-config-path}/PKG_CONFIG_PATH)\${PKG_CONFIG_PATH:+:\$PKG_CONFIG_PATH}";
           }
         ];
+      commands = [
+        {
+          name = "ghc";
+          package = findInput (p: lib.hasPrefix "ghc-shell-for-packages" (p.name or "")) "ghc";
+          category = "haskell";
+        }
+        {
+          name = "cabal";
+          package = findInput (p: (p.pname or "") == "cabal-install-exe-cabal") "cabal";
+          category = "haskell";
+        }
+        {
+          name = "haskell-language-server";
+          package = findInput (p: (p.pname or "") == "haskell-language-server-exe-haskell-language-server") "hls";
+          category = "haskell";
+        }
+      ];
       devshell = {
         packages = [cardano-node-env];
         startup.rewrite-cabal-project.text = ''
@@ -201,7 +223,7 @@ in rec {
           You can now run:
             · {bold}cabal update{reset}
             · {bold}cabal build testgen-hs{reset}
-            · or even {bold}haskell-language-server{reset} for LSP
+            · {bold}cabal run testgen-hs -- --help{reset}
         '';
       };
     };
