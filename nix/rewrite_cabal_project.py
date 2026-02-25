@@ -10,7 +10,7 @@ PATCHED_NODE_SRC = "@patched_node_src@"
 EXTRA_PACKAGES = json.loads(r"""@extra_packages_json@""")
 EXTRA_PROJECT_SUFFIX = r"""@extra_project_suffix@"""
 LOCAL_CHAP_PATH = "@local_chap_path@"
-REPO_ROOT = str(Path.cwd())
+REPO_ROOT = "@repo_root@"
 
 REPO_NAME = "cardano-haskell-packages"
 

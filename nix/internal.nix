@@ -200,7 +200,20 @@ in rec {
       extra_packages_json = cabal-project-extra-packages-json;
       extra_project_suffix = cabal-project-extra-suffix;
       local_chap_path = toString cardano-node-flake'.inputs.CHaP;
+      repo_root = "@REPO_ROOT@";
     };
+
+    # Pre-generate cabal.project at Nix build time so the devshell
+    # startup doesn't need to launch Python (~260 ms saved).
+    # The only remaining placeholder is @REPO_ROOT@, which is
+    # sed-replaced with $PRJ_ROOT at shell entry.
+    cabal-project-generated =
+      pkgs.runCommand "cabal-project-generated" {
+        nativeBuildInputs = [pkgs.python3];
+      } ''
+        python3 ${cabal-project-rewrite-script}
+        cp cabal.project $out
+      '';
   in {
     old = let
       chap-store-path = toString cardano-node-flake'.inputs.CHaP;
@@ -209,7 +222,7 @@ in rec {
         inputsFrom = [cardano-node-devshell];
         shellHook = ''
           export CABAL_DIR="$PWD/.cabal"
-          ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
+          sed "s|@REPO_ROOT@|$PWD|g" ${cabal-project-generated} > cabal.project
 
           _chap_marker="$CABAL_DIR/.chap-store-path"
           if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
@@ -267,8 +280,7 @@ in rec {
         startup.rewrite-cabal-project.text = let
           chap-store-path = toString cardano-node-flake'.inputs.CHaP;
         in ''
-          ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
-
+          sed "s|@REPO_ROOT@|$PRJ_ROOT|g" ${cabal-project-generated} > cabal.project
           # Re-index the local CHaP only when the underlying Nix store
           # path changes (i.e. after a flake.lock update).  A marker
           # file records the store path that was last indexed.
@@ -285,6 +297,7 @@ in rec {
             echo "First-time setup: downloading Hackage package index…"
             cabal update hackage.haskell.org
           fi
+
         '';
         motd = ''
 
