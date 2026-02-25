@@ -6,6 +6,7 @@ result-*
 dist-newstyle/
 /cabal.project
 /cabal.project.*
+/.cabal/
 .ghc.environment.*
 
 # direnv

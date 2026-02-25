@@ -53,10 +53,31 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
       patch -p1 -d $out/libs/cardano-ledger-test -i ${./cardano-ledger-test--windows-fix.diff}
     ''}
   '';
+  constrained-generators-src = patched-cardano-node-flake'.project.${buildSystem}.hsPkgs.constrained-generators.src;
+  patched-constrained-generators-src = constrained-generators-src;
   cardano-api-src = cardano-node-flake'.project.${buildSystem}.hsPkgs.cardano-api.src;
+  cardano-api-id = cardano-node-flake'.project.${buildSystem}.hsPkgs.cardano-api.identifier;
+  # Extract the latest revised .cabal from the local CHaP index.
+  # CHaP revisions relax version bounds to match the package set;
+  # without this, the on-disk .cabal carries the original tight bounds
+  # and cabal-install's solver rejects valid dependency plans.
+  #
+  # GNU tar overwrites earlier entries with later ones, so a plain
+  # extract of a duplicate member yields the last revision — exactly
+  # the latest CHaP revision we need.
+  cardano-api-revised-cabal = let
+    member = "${cardano-api-id.name}/${cardano-api-id.version}/${cardano-api-id.name}.cabal";
+  in
+    pkgs.runCommandNoCC "cardano-api-revised-cabal" {} ''
+      tar xf ${cardano-node-flake'.inputs.CHaP}/01-index.tar.gz '${member}'
+      cp '${member}' $out
+    '';
   patched-cardano-api-src = pkgs.applyPatches {
     name = "cardano-api-src-patched";
     src = cardano-api-src;
+    prePatch = ''
+      cp ${cardano-api-revised-cabal} cardano-api.cabal
+    '';
     patches = [./cardano-api--expose-internal.diff];
   };
   patched-cardano-node-src = {withOurCode ? true}:
@@ -159,23 +180,50 @@ in rec {
       "${patched-cardano-api-src}"
       "${patched-cardano-ledger-src}/libs/cardano-ledger-core"
       "${patched-cardano-ledger-src}/libs/cardano-ledger-test"
-      "${patched-cardano-ledger-src}/libs/constrained-generators"
+      "${patched-constrained-generators-src}"
       "@REPO_ROOT@/testgen-hs"
     ];
     cabal-project-extra-packages-json = builtins.toJSON cabal-project-extra-packages;
+    # cardano-ledger-core uses the deprecated PV3.fromGHC (should be
+    # fromHaskellRatio). The upstream cabal.project sets -Werror globally,
+    # which promotes this deprecation warning into a build error. The nix
+    # build is unaffected because haskell.nix doesn't pass -Werror from
+    # the project file, but the devshell's cabal does.
+    cabal-project-extra-suffix = ''
+      package cardano-ledger-core
+        ghc-options: -Wwarn=deprecations
+    '';
     cabal-project-rewrite-script = pkgs.substituteAll {
       src = ./rewrite_cabal_project.py;
       cabal_project_template = toString cabal-project-template;
       patched_node_src = toString (patched-cardano-node-src {withOurCode = false;});
       extra_packages_json = cabal-project-extra-packages-json;
+      extra_project_suffix = cabal-project-extra-suffix;
+      local_chap_path = toString cardano-node-flake'.inputs.CHaP;
     };
   in {
-    old = pkgs.mkShell {
-      inputsFrom = [cardano-node-devshell];
-      shellHook = ''
-        ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
-      '';
-    };
+    old = let
+      chap-store-path = toString cardano-node-flake'.inputs.CHaP;
+    in
+      pkgs.mkShell {
+        inputsFrom = [cardano-node-devshell];
+        shellHook = ''
+          export CABAL_DIR="$PWD/.cabal"
+          ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
+
+          _chap_marker="$CABAL_DIR/.chap-store-path"
+          if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
+            mkdir -p "$CABAL_DIR/packages/cardano-haskell-packages"
+            cabal update cardano-haskell-packages 2>/dev/null
+            printf '%s' '${chap-store-path}' > "$_chap_marker"
+          fi
+
+          if [ ! -e "$CABAL_DIR/packages/hackage.haskell.org/01-index.tar" ]; then
+            echo "First-time setup: downloading Hackage package index…"
+            cabal update hackage.haskell.org
+          fi
+        '';
+      };
     new = {
       pkgs,
       config,
@@ -188,6 +236,10 @@ in rec {
           value = cardano-node-ghc-libdir;
         }
         ++ [
+          {
+            name = "CABAL_DIR";
+            eval = "$PRJ_ROOT/.cabal";
+          }
           {
             name = "PKG_CONFIG_PATH";
             eval = "$(cat ${devshell-pkg-config-path}/PKG_CONFIG_PATH)\${PKG_CONFIG_PATH:+:\$PKG_CONFIG_PATH}";
@@ -212,8 +264,27 @@ in rec {
       ];
       devshell = {
         packages = [cardano-node-env];
-        startup.rewrite-cabal-project.text = ''
+        startup.rewrite-cabal-project.text = let
+          chap-store-path = toString cardano-node-flake'.inputs.CHaP;
+        in ''
           ${lib.getExe pkgs.python3} ${cabal-project-rewrite-script}
+
+          # Re-index the local CHaP only when the underlying Nix store
+          # path changes (i.e. after a flake.lock update).  A marker
+          # file records the store path that was last indexed.
+          _chap_marker="$CABAL_DIR/.chap-store-path"
+          if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
+            mkdir -p "$CABAL_DIR/packages/cardano-haskell-packages"
+            cabal update cardano-haskell-packages 2>/dev/null
+            printf '%s' '${chap-store-path}' > "$_chap_marker"
+          fi
+
+          # On first use of this project-local CABAL_DIR, also fetch the
+          # Hackage index so that 'cabal build' works out of the box.
+          if [ ! -e "$CABAL_DIR/packages/hackage.haskell.org/01-index.tar" ]; then
+            echo "First-time setup: downloading Hackage package index…"
+            cabal update hackage.haskell.org
+          fi
         '';
         motd = ''
 

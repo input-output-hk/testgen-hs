@@ -1,13 +1,18 @@
 """Rewrite cabal.project packages for the devshell."""
 
 import json
+import re
 from pathlib import Path
 
 
 TEMPLATE_PATH = Path("@cabal_project_template@")
 PATCHED_NODE_SRC = "@patched_node_src@"
 EXTRA_PACKAGES = json.loads(r"""@extra_packages_json@""")
+EXTRA_PROJECT_SUFFIX = r"""@extra_project_suffix@"""
+LOCAL_CHAP_PATH = "@local_chap_path@"
 REPO_ROOT = str(Path.cwd())
+
+REPO_NAME = "cardano-haskell-packages"
 
 
 def rewrite_packages(text: str) -> str:
@@ -58,5 +63,29 @@ def rewrite_packages(text: str) -> str:
     return result
 
 
+def use_local_chap(text: str) -> str:
+    """Point the CHaP repository at a local Nix-store copy.
+
+    This uses the same pinned CHaP snapshot that cardano-node's haskell.nix
+    uses, giving us cabal-file revisions and full reproducibility.
+    """
+    # Replace the "repository cardano-haskell-packages" block (url, secure,
+    # root-keys, and any key-threshold lines) with a local file: URL.
+    text = re.sub(
+        r"(?:--[^\n]*\n)*"  # optional preceding comment lines
+        r"repository cardano-haskell-packages\n"
+        r"(?:  [^\n]+\n)*",  # indented continuation lines
+        f"repository {REPO_NAME}\n  url: file:{LOCAL_CHAP_PATH}\n  secure: True\n",
+        text,
+    )
+
+    return text
+
+
 base_text = TEMPLATE_PATH.read_text(encoding="utf-8")
-Path("cabal.project").write_text(rewrite_packages(base_text), encoding="utf-8")
+result = rewrite_packages(base_text)
+if LOCAL_CHAP_PATH.strip():
+    result = use_local_chap(result)
+if EXTRA_PROJECT_SUFFIX.strip():
+    result = result.rstrip("\n") + "\n\n" + EXTRA_PROJECT_SUFFIX.strip() + "\n"
+Path("cabal.project").write_text(result, encoding="utf-8")
