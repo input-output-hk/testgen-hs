@@ -171,7 +171,7 @@ in rec {
       } ''
         source $stdenv/setup 2>/dev/null || true
         mkdir -p $out
-        echo -n "''${PKG_CONFIG_PATH:-}" > $out/PKG_CONFIG_PATH
+        echo -n "''${PKG_CONFIG_PATH:-}" >$out/PKG_CONFIG_PATH
       '';
 
     cabal-project-base = cardano-node-flake.project.${buildSystem}.args.cabalProject;
@@ -222,13 +222,13 @@ in rec {
         inputsFrom = [cardano-node-devshell];
         shellHook = ''
           export CABAL_DIR="$PWD/.cabal"
-          sed "s|@REPO_ROOT@|$PWD|g" ${cabal-project-generated} > cabal.project
+          sed "s|@REPO_ROOT@|$PWD|g" ${cabal-project-generated} >"$PWD"/cabal.project
 
           _chap_marker="$CABAL_DIR/.chap-store-path"
           if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
             mkdir -p "$CABAL_DIR/packages/cardano-haskell-packages"
             cabal update cardano-haskell-packages 2>/dev/null
-            printf '%s' '${chap-store-path}' > "$_chap_marker"
+            printf '%s' '${chap-store-path}' >"$_chap_marker"
           fi
 
           if [ ! -e "$CABAL_DIR/packages/hackage.haskell.org/01-index.tar" ]; then
@@ -280,7 +280,7 @@ in rec {
         startup.rewrite-cabal-project.text = let
           chap-store-path = toString cardano-node-flake'.inputs.CHaP;
         in ''
-          sed "s|@REPO_ROOT@|$PRJ_ROOT|g" ${cabal-project-generated} > cabal.project
+          sed "s|@REPO_ROOT@|$PRJ_ROOT|g" ${cabal-project-generated} >"$PRJ_ROOT"/cabal.project
           # Re-index the local CHaP only when the underlying Nix store
           # path changes (i.e. after a flake.lock update).  A marker
           # file records the store path that was last indexed.
@@ -288,7 +288,7 @@ in rec {
           if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
             mkdir -p "$CABAL_DIR/packages/cardano-haskell-packages"
             cabal update cardano-haskell-packages 2>/dev/null
-            printf '%s' '${chap-store-path}' > "$_chap_marker"
+            printf '%s' '${chap-store-path}' >"$_chap_marker"
           fi
 
           # On first use of this project-local CABAL_DIR, also fetch the
