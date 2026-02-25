@@ -292,7 +292,6 @@ in rec {
           $(menu)
 
           You can now run:
-            · {bold}cabal update{reset}
             · {bold}cabal build testgen-hs{reset}
             · {bold}cabal run testgen-hs -- --help{reset}
         '';
