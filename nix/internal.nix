@@ -240,11 +240,7 @@ in rec {
           fi
         '';
       };
-    new = {
-      pkgs,
-      config,
-      ...
-    }: {
+    new = {config, ...}: {
       name = "testgen-hs-devshell";
       env =
         lib.optional (cardano-node-ghc-libdir != "") {
