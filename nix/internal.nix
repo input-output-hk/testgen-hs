@@ -222,7 +222,10 @@ in rec {
         inputsFrom = [cardano-node-devshell];
         shellHook = ''
           export CABAL_DIR="$PWD/.cabal"
-          sed "s|@REPO_ROOT@|$PWD|g" ${cabal-project-generated} >"$PWD"/cabal.project
+          _new=$(sed "s|@REPO_ROOT@|$PWD|g" ${cabal-project-generated})
+          if [ ! -e "$PWD/cabal.project" ] || [ "$(cat "$PWD/cabal.project")" != "$_new" ]; then
+            printf '%s\n' "$_new" > "$PWD/cabal.project"
+          fi
 
           _chap_marker="$CABAL_DIR/.chap-store-path"
           if [ ! -e "$_chap_marker" ] || [ "$(cat "$_chap_marker")" != "${chap-store-path}" ]; then
@@ -280,7 +283,10 @@ in rec {
         startup.rewrite-cabal-project.text = let
           chap-store-path = toString cardano-node-flake'.inputs.CHaP;
         in ''
-          sed "s|@REPO_ROOT@|$PRJ_ROOT|g" ${cabal-project-generated} >"$PRJ_ROOT"/cabal.project
+          _new=$(sed "s|@REPO_ROOT@|$PRJ_ROOT|g" ${cabal-project-generated})
+          if [ ! -e "$PRJ_ROOT/cabal.project" ] || [ "$(cat "$PRJ_ROOT/cabal.project")" != "$_new" ]; then
+            printf '%s\n' "$_new" > "$PRJ_ROOT/cabal.project"
+          fi
           # Re-index the local CHaP only when the underlying Nix store
           # path changes (i.e. after a flake.lock update).  A marker
           # file records the store path that was last indexed.
