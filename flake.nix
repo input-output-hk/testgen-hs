@@ -53,8 +53,7 @@
             default-x86_64-windows = inputs.self.internal.x86_64-windows.defaultPackage;
           });
 
-        devShells.old = internal.devShell.old;
-        devshells.new = internal.devShell.new;
+        devshells.default = internal.devShell.new;
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";

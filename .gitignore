@@ -7,3 +7,7 @@ dist-newstyle/
 /cabal.project
 /cabal.project.*
 .ghc.environment.*
+
+# direnv
+.direnv/
+.envrc.local
